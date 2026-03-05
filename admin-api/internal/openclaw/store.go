@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Store struct {
@@ -117,6 +119,100 @@ func (s *Store) DisconnectProvider(ctx context.Context, provider string) error {
 	}
 
 	return maybeRestartOpenClaw()
+}
+
+func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli *CLI) (AuthResetResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	res := AuthResetResult{
+		Provider:      provider,
+		Restart:       restart,
+		AuthStorePath: s.paths.AuthStorePath,
+		ConfigPath:    s.paths.ConfigPath,
+	}
+
+	if err := requireRegularFile(s.paths.AuthStorePath, "auth store"); err != nil {
+		return AuthResetResult{}, err
+	}
+	if err := requireRegularFile(s.paths.ConfigPath, "config file"); err != nil {
+		return AuthResetResult{}, err
+	}
+
+	authRaw, err := s.readRawJSONMap(s.paths.AuthStorePath)
+	if err != nil {
+		return AuthResetResult{}, err
+	}
+	cfgRaw, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return AuthResetResult{}, err
+	}
+
+	authProfiles := readMapField(authRaw, "profiles")
+	cfgProfiles := getNestedMap(cfgRaw, []string{"auth", "profiles"})
+
+	res.AuthProfilesRemoved = matchingProfileIDs(authProfiles, provider)
+	res.ConfigProfilesRemoved = matchingProfileIDs(cfgProfiles, provider)
+
+	ts := time.Now().Format("20060102-150405")
+	res.AuthBackupPath = s.paths.AuthStorePath + ".bak." + ts
+	res.ConfigBackupPath = s.paths.ConfigPath + ".bak." + ts
+
+	if err := copyFile(s.paths.AuthStorePath, res.AuthBackupPath); err != nil {
+		return AuthResetResult{}, err
+	}
+	if err := copyFile(s.paths.ConfigPath, res.ConfigBackupPath); err != nil {
+		return AuthResetResult{}, err
+	}
+
+	if provider == "all" {
+		authRaw["profiles"] = map[string]any{}
+		authRaw["usageStats"] = map[string]any{}
+		setNestedMapValue(cfgRaw, []string{"auth", "profiles"}, map[string]any{})
+	} else {
+		authRaw["profiles"] = removeProfilesByProvider(authProfiles, provider)
+
+		usageStats, ok := authRaw["usageStats"].(map[string]any)
+		if ok {
+			for key := range usageStats {
+				if strings.HasPrefix(key, provider+":") {
+					delete(usageStats, key)
+				}
+			}
+			authRaw["usageStats"] = usageStats
+		}
+
+		setNestedMapValue(cfgRaw, []string{"auth", "profiles"}, removeProfilesByProvider(cfgProfiles, provider))
+	}
+
+	if err := s.writeJSONAtomic(s.paths.AuthStorePath, authRaw); err != nil {
+		return AuthResetResult{}, err
+	}
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfgRaw); err != nil {
+		return AuthResetResult{}, err
+	}
+
+	if !restart {
+		res.RestartSkipped = true
+		return res, nil
+	}
+
+	if os.Getenv("OPENCLAW_ADMIN_SKIP_RESTART") == "1" {
+		res.RestartSkipped = true
+		return res, nil
+	}
+
+	if cli == nil {
+		res.RestartError = "restart requested but cli is unavailable"
+		return res, nil
+	}
+
+	if err := cli.GatewayRestart(ctx); err != nil {
+		res.RestartError = err.Error()
+		return res, nil
+	}
+	res.Restarted = true
+	return res, nil
 }
 
 func (s *Store) ListAuthProfiles(provider string) ([]ProfileResource, error) {
@@ -326,16 +422,101 @@ func profileStatus(cred AuthCredential) string {
 	}
 }
 
+func requireRegularFile(path string, name string) error {
+	st, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s not found: %s", name, path)
+		}
+		return fmt.Errorf("stat %s: %w", path, err)
+	}
+	if st.IsDir() {
+		return fmt.Errorf("%s is a directory: %s", name, path)
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", src, err)
+	}
+	defer func() { _ = in.Close() }()
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", filepath.Dir(dst), err)
+	}
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", dst, err)
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return fmt.Errorf("copy %s to %s: %w", src, dst, err)
+	}
+	return nil
+}
+
+func readMapField(root map[string]any, key string) map[string]any {
+	raw, ok := root[key]
+	if !ok {
+		return map[string]any{}
+	}
+	m, ok := raw.(map[string]any)
+	if !ok || m == nil {
+		return map[string]any{}
+	}
+	return m
+}
+
+func matchingProfileIDs(profiles map[string]any, provider string) []string {
+	ids := make([]string, 0, len(profiles))
+	for id, raw := range profiles {
+		if provider == "all" || profileProvider(raw) == provider {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func removeProfilesByProvider(profiles map[string]any, provider string) map[string]any {
+	next := make(map[string]any, len(profiles))
+	for id, raw := range profiles {
+		if profileProvider(raw) == provider {
+			continue
+		}
+		next[id] = raw
+	}
+	return next
+}
+
+func profileProvider(raw any) string {
+	item, ok := raw.(map[string]any)
+	if !ok {
+		return ""
+	}
+	p, _ := item["provider"].(string)
+	return p
+}
+
 func maybeRestartOpenClaw() error {
+	_, err := restartOpenClaw()
+	return err
+}
+
+func restartOpenClaw() (bool, error) {
 	if os.Getenv("OPENCLAW_ADMIN_SKIP_RESTART") == "1" {
-		return nil
+		return false, nil
 	}
 	if _, err := exec.LookPath("systemctl"); err != nil {
-		return nil
+		return false, nil
 	}
 	cmd := exec.Command("systemctl", "restart", "openclaw")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("restart openclaw service: %w", err)
+		return false, fmt.Errorf("restart openclaw service: %w", err)
 	}
-	return nil
+	return true, nil
 }

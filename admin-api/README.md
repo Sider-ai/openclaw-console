@@ -40,6 +40,7 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 - `GET /api/v1/providers/{provider}`
 - `POST /api/v1/providers/openai:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
+- `POST /api/v1/auth:reset`
 - `GET /api/v1/providers/{provider}/authProfiles`
 - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
 - `GET /api/v1/modelCatalogEntries?provider=openai|openai-codex&page_size=&page_token=`

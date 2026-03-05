@@ -85,6 +85,11 @@ func (c *CLI) SetDefaultModel(ctx context.Context, model string) error {
 	return err
 }
 
+func (c *CLI) GatewayRestart(ctx context.Context) error {
+	_, err := c.run(ctx, "openclaw", "gateway", "restart")
+	return err
+}
+
 func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, error) {
 	out, err := c.run(ctx, bin, args...)
 	if err != nil {

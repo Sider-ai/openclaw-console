@@ -101,6 +101,30 @@ func (h *Handler) DisconnectProvider(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
+func (h *Handler) ResetAuth(w http.ResponseWriter, r *http.Request) {
+	var req resetAuthRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+
+	restart := true
+	if req.Restart != nil {
+		restart = *req.Restart
+	}
+
+	res, err := h.service.ResetAuth(r.Context(), req.Provider, restart)
+	if err != nil {
+		if strings.Contains(err.Error(), "unsupported provider") {
+			writeBadRequest(w, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 func (h *Handler) ListAuthProfiles(w http.ResponseWriter, r *http.Request) {
 	providerID := chi.URLParam(r, "provider")
 	items, err := h.service.ListAuthProfiles(providerID)

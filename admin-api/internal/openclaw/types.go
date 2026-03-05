@@ -55,6 +55,20 @@ type CodexAuthSessionResource struct {
 	ErrorMessage     string `json:"errorMessage,omitempty"`
 }
 
+type AuthResetResult struct {
+	Provider              string   `json:"provider"`
+	Restart               bool     `json:"restart"`
+	AuthStorePath         string   `json:"authStorePath"`
+	ConfigPath            string   `json:"configPath"`
+	AuthProfilesRemoved   []string `json:"authProfilesRemoved"`
+	ConfigProfilesRemoved []string `json:"configProfilesRemoved"`
+	AuthBackupPath        string   `json:"authBackupPath,omitempty"`
+	ConfigBackupPath      string   `json:"configBackupPath,omitempty"`
+	Restarted             bool     `json:"restarted"`
+	RestartSkipped        bool     `json:"restartSkipped"`
+	RestartError          string   `json:"restartError,omitempty"`
+}
+
 func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }

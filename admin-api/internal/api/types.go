@@ -20,6 +20,11 @@ type connectAPIKeyRequest struct {
 	DefaultModel string `json:"defaultModel,omitempty"`
 }
 
+type resetAuthRequest struct {
+	Provider string `json:"provider,omitempty"`
+	Restart  *bool  `json:"restart,omitempty"`
+}
+
 type createCodexSessionRequest struct {
 	DefaultModelHint string `json:"defaultModelHint,omitempty"`
 }

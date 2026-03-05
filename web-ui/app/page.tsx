@@ -32,7 +32,22 @@ type CodexSession = {
   errorMessage?: string;
 };
 
+type AuthResetResult = {
+  provider: string;
+  restart: boolean;
+  authStorePath: string;
+  configPath: string;
+  authProfilesRemoved: string[];
+  configProfilesRemoved: string[];
+  authBackupPath?: string;
+  configBackupPath?: string;
+  restarted: boolean;
+  restartSkipped: boolean;
+  restartError?: string;
+};
+
 type NavKey = "agents" | "channels" | "tools" | "models";
+type ResetProvider = "openai" | "openai-codex" | "all";
 
 const API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_BASE || "/api").replace(/\/$/, "");
 
@@ -42,6 +57,14 @@ const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: "tools", label: "Tools" },
   { key: "models", label: "Models" }
 ];
+
+function inferProviderFromModel(defaultModel: string): ResetProvider | "" {
+  const provider = defaultModel.trim().split("/", 1)[0];
+  if (provider === "openai" || provider === "openai-codex") {
+    return provider;
+  }
+  return "";
+}
 
 export default function Page() {
   const [activeNav, setActiveNav] = useState<NavKey>("models");
@@ -60,6 +83,10 @@ export default function Page() {
 
   const [codexSession, setCodexSession] = useState<CodexSession | null>(null);
   const [redirectURL, setRedirectURL] = useState("");
+  const [resetProvider, setResetProvider] = useState<ResetProvider>("openai");
+  const [resetProviderTouched, setResetProviderTouched] = useState(false);
+  const [resetRestart, setResetRestart] = useState(true);
+  const [resetResult, setResetResult] = useState<AuthResetResult | null>(null);
 
   const inProgress = useMemo(() => {
     if (!codexSession) {
@@ -100,12 +127,18 @@ export default function Page() {
       setOpenaiProvider(openai);
       setCodexProvider(codex);
       setCatalog(models.modelCatalogEntries || []);
+      if (!resetProviderTouched) {
+        const inferred = inferProviderFromModel(setting.defaultModel || "");
+        if (inferred) {
+          setResetProvider(inferred);
+        }
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [providerFilter]);
+  }, [providerFilter, resetProviderTouched]);
 
   useEffect(() => {
     void refresh();
@@ -221,6 +254,31 @@ export default function Page() {
     }
   }
 
+  async function applyAuthReset() {
+    const confirmed = window.confirm(`Reset auth profiles for provider "${resetProvider}"? This will remove local auth profiles.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api<AuthResetResult>("/v1/auth:reset", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: resetProvider,
+          restart: resetRestart
+        })
+      });
+      setResetResult(res);
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function renderPlaceholder(title: string, desc: string) {
     return (
       <section className="panel">
@@ -252,6 +310,32 @@ export default function Page() {
         <section className="panel">
           <h2>Provider Status</h2>
           <pre>{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
+        </section>
+
+        <section className="panel">
+          <h2>Auth Reset</h2>
+          <div className="form-row">
+            <select
+              value={resetProvider}
+              onChange={(e) => {
+                setResetProvider(e.target.value as ResetProvider);
+                setResetProviderTouched(true);
+              }}
+            >
+              <option value="openai">openai</option>
+              <option value="openai-codex">openai-codex</option>
+              <option value="all">all</option>
+            </select>
+            <select value={resetRestart ? "1" : "0"} onChange={(e) => setResetRestart(e.target.value === "1")}>
+              <option value="1">Restart gateway after reset</option>
+              <option value="0">Do not restart gateway</option>
+            </select>
+            <button className="btn btn-warn" onClick={applyAuthReset} disabled={loading}>
+              Reset Auth
+            </button>
+          </div>
+          <p className="muted">This creates backup files for auth store and config before writing changes.</p>
+          {resetResult && <pre>{JSON.stringify(resetResult, null, 2)}</pre>}
         </section>
 
         <section className="panel">

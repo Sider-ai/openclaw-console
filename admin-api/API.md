@@ -24,6 +24,7 @@ Canonical machine-readable spec: `openapi.yaml`
 - `GET /api/v1/providers/{provider}`
 - `POST /api/v1/providers/openai:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
+- `POST /api/v1/auth:reset`
 
 ### AuthProfiles
 

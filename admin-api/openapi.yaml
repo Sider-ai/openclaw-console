@@ -145,6 +145,32 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/auth:reset:
+    post:
+      tags: [Providers]
+      operationId: resetAuth
+      summary: Reset auth profiles with backup
+      description: |
+        Resets auth profiles in auth store and config files.
+        Creates backups before write, then optionally restarts gateway.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetAuthRequest'
+      responses:
+        '200':
+          description: Reset result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetAuthResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/providers/{provider}/authProfiles:
     get:
       tags: [AuthProfiles]
@@ -487,6 +513,50 @@ components:
           $ref: '#/components/schemas/Provider'
         modelSetting:
           $ref: '#/components/schemas/ModelSetting'
+
+    ResetAuthRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        provider:
+          type: string
+          enum: [openai, openai-codex, all]
+          default: openai
+        restart:
+          type: boolean
+          default: true
+
+    ResetAuthResponse:
+      type: object
+      required: [provider, restart, authStorePath, configPath, authProfilesRemoved, configProfilesRemoved, restarted, restartSkipped]
+      properties:
+        provider:
+          type: string
+          enum: [openai, openai-codex, all]
+        restart:
+          type: boolean
+        authStorePath:
+          type: string
+        configPath:
+          type: string
+        authProfilesRemoved:
+          type: array
+          items:
+            type: string
+        configProfilesRemoved:
+          type: array
+          items:
+            type: string
+        authBackupPath:
+          type: string
+        configBackupPath:
+          type: string
+        restarted:
+          type: boolean
+        restartSkipped:
+          type: boolean
+        restartError:
+          type: string
 
     AuthProfile:
       type: object

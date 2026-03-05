@@ -106,6 +106,17 @@ func (s *Service) DisconnectProvider(ctx context.Context, provider string) (Prov
 	return s.GetProvider(ctx, provider)
 }
 
+func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) (AuthResetResult, error) {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = "openai"
+	}
+	if !isSupportedResetProvider(provider) {
+		return AuthResetResult{}, fmt.Errorf("unsupported provider: %s", provider)
+	}
+	return s.store.ResetAuth(ctx, provider, restart, s.cli)
+}
+
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
 	if provider != "" && !isSupportedProvider(provider) {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
@@ -169,6 +180,15 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 func isSupportedProvider(provider string) bool {
 	switch provider {
 	case "openai", "openai-codex":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSupportedResetProvider(provider string) bool {
+	switch provider {
+	case "openai", "openai-codex", "all":
 		return true
 	default:
 		return false
