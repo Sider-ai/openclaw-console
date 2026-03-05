@@ -5,7 +5,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_UI_DIR="$ROOT_DIR/web-ui"
 EMBED_DIST_DIR="$ROOT_DIR/admin-api/internal/ui/dist"
 BIN_DIR="$ROOT_DIR/dist"
-BIN_PATH="$BIN_DIR/openclaw-console"
+TARGET_OS="${GOOS:-$(go env GOOS)}"
+TARGET_ARCH="${GOARCH:-$(go env GOARCH)}"
+
+if [[ -n "${GOOS:-}" || -n "${GOARCH:-}" ]]; then
+  BIN_NAME="openclaw-console-${TARGET_OS}-${TARGET_ARCH}"
+else
+  BIN_NAME="openclaw-console"
+fi
+
+BIN_PATH="$BIN_DIR/$BIN_NAME"
 
 command -v go >/dev/null 2>&1 || {
   echo "go is required but not found in PATH" >&2
@@ -34,6 +43,7 @@ echo "[3/3] Building admin-api binary..."
 mkdir -p "$BIN_DIR"
 (
   cd "$ROOT_DIR/admin-api"
+  echo "Building target: ${TARGET_OS}/${TARGET_ARCH}"
   go build -o "$BIN_PATH" ./cmd/server
 )
 

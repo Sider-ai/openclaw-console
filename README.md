@@ -34,6 +34,8 @@ Build web assets, embed them into `admin-api`, and produce one executable:
 
 ```bash
 ./scripts/build-single-binary.sh
+# or:
+make build
 ```
 
 Run:
@@ -43,6 +45,20 @@ Run:
 ```
 
 Then open `http://127.0.0.1:18080` (Web UI) and `http://127.0.0.1:18080/healthz`.
+
+Build Linux `x86_64` binary:
+
+```bash
+GOOS=linux GOARCH=amd64 ./scripts/build-single-binary.sh
+# or:
+make build-linux-amd64
+```
+
+Output:
+
+```bash
+./dist/openclaw-console-linux-amd64
+```
 
 ## Validation
 
