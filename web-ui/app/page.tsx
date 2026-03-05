@@ -32,6 +32,10 @@ type CatalogEntry = {
   modelKey: string;
   displayName: string;
   provider: string;
+  input: string;
+  contextWindow: number;
+  available: boolean;
+  tags?: string[];
 };
 
 type CodexSession = {
@@ -44,23 +48,8 @@ type CodexSession = {
   errorMessage?: string;
 };
 
-type AuthResetResult = {
-  provider: string;
-  restart: boolean;
-  authStorePath: string;
-  configPath: string;
-  authProfilesRemoved: string[];
-  configProfilesRemoved: string[];
-  authBackupPath?: string;
-  configBackupPath?: string;
-  restarted: boolean;
-  restartSkipped: boolean;
-  restartError?: string;
-};
-
 type NavKey = "agents" | "channels" | "tools" | "models";
-type ResetProvider = "openai" | "openai-codex" | "all";
-type OpenAIModelProvider = "openai" | "openai-codex";
+const MODEL_DEFAULTS_NODE = "__model_defaults__";
 
 const API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_BASE || "/api").replace(/\/$/, "");
 const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
@@ -70,14 +59,6 @@ const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models">; label: string }[] = [
   { key: "channels", label: "Channels" },
   { key: "tools", label: "Tools" }
 ];
-
-function inferProviderFromModel(defaultModel: string): ResetProvider | "" {
-  const provider = defaultModel.trim().split("/", 1)[0];
-  if (provider === "openai" || provider === "openai-codex") {
-    return provider;
-  }
-  return "";
-}
 
 function fallbackProviderLabel(providerId: string): string {
   const parts = providerId
@@ -133,8 +114,9 @@ export default function Page() {
   const [error, setError] = useState("");
 
   const [modelSetting, setModelSetting] = useState<ModelSetting | null>(null);
+  const [providerSummaries, setProviderSummaries] = useState<ProviderSummary[]>([]);
   const [providerNav, setProviderNav] = useState<ModelProviderNav[]>([]);
-  const [activeModelProvider, setActiveModelProvider] = useState("openai");
+  const [activeModelProvider, setActiveModelProvider] = useState(MODEL_DEFAULTS_NODE);
 
   const [openaiProvider, setOpenaiProvider] = useState<Provider | null>(null);
   const [codexProvider, setCodexProvider] = useState<Provider | null>(null);
@@ -142,16 +124,12 @@ export default function Page() {
 
   const [apiKey, setApiKey] = useState("");
   const [defaultModelInput, setDefaultModelInput] = useState("");
+  const [defaultModelUnavailable, setDefaultModelUnavailable] = useState("");
 
-  const [openAIModelProvider, setOpenAIModelProvider] = useState<OpenAIModelProvider>("openai");
-  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
+  const [modelOptions, setModelOptions] = useState<CatalogEntry[]>([]);
 
   const [codexSession, setCodexSession] = useState<CodexSession | null>(null);
   const [redirectURL, setRedirectURL] = useState("");
-  const [resetProvider, setResetProvider] = useState<ResetProvider>("openai");
-  const [resetProviderTouched, setResetProviderTouched] = useState(false);
-  const [resetRestart, setResetRestart] = useState(true);
-  const [resetResult, setResetResult] = useState<AuthResetResult | null>(null);
 
   const inProgress = useMemo(() => {
     if (!codexSession) {
@@ -163,6 +141,9 @@ export default function Page() {
   }, [codexSession]);
 
   const activeProviderLabel = useMemo(() => {
+    if (activeModelProvider === MODEL_DEFAULTS_NODE) {
+      return "Models";
+    }
     const item = providerNav.find((it) => it.id === activeModelProvider);
     return item?.label || fallbackProviderLabel(activeModelProvider);
   }, [providerNav, activeModelProvider]);
@@ -186,30 +167,85 @@ export default function Page() {
     setLoading(true);
     setError("");
 
-    const catalogProvider = activeModelProvider === "openai" ? openAIModelProvider : activeModelProvider;
-
     try {
-      const [setting, providerList, models] = await Promise.all([
+      const [setting, providerList] = await Promise.all([
         api<ModelSetting>("/v1/modelSettings/default"),
-        api<{ providers: ProviderSummary[] }>("/v1/providers"),
-        api<{ modelCatalogEntries: CatalogEntry[] }>(`/v1/modelCatalogEntries?provider=${encodeURIComponent(catalogProvider)}`)
+        api<{ providers: ProviderSummary[] }>("/v1/providers")
       ]);
 
       setModelSetting(setting);
-      setDefaultModelInput(setting.defaultModel || "");
 
       const nextProviders = providerList.providers || [];
+      setProviderSummaries(nextProviders);
 
       const nextProviderNav = buildModelProviderNav(nextProviders);
       setProviderNav(nextProviderNav);
 
-      if (!nextProviderNav.some((item) => item.id === activeModelProvider)) {
-        setActiveModelProvider(nextProviderNav[0]?.id || "openai");
+      if (activeModelProvider !== MODEL_DEFAULTS_NODE && !nextProviderNav.some((item) => item.id === activeModelProvider)) {
+        setActiveModelProvider(MODEL_DEFAULTS_NODE);
       }
 
-      setCatalog(models.modelCatalogEntries || []);
+      const providerLabelByID = new Map<string, string>();
+      nextProviders.forEach((item) => {
+        providerLabelByID.set(item.providerId, item.displayName || fallbackProviderLabel(item.providerId));
+      });
 
-      if (activeModelProvider === "openai") {
+      const providerIDs = Array.from(new Set(nextProviders.map((item) => item.providerId).filter(Boolean)));
+      const catalogFetches = await Promise.allSettled(
+        providerIDs.map(async (providerID) => {
+          const all: CatalogEntry[] = [];
+          let pageToken = "";
+          for (;;) {
+            const query = new URLSearchParams({
+              provider: providerID,
+              page_size: "200"
+            });
+            if (pageToken) {
+              query.set("page_token", pageToken);
+            }
+            const res = await api<{ modelCatalogEntries: CatalogEntry[]; nextPageToken?: string }>(
+              `/v1/modelCatalogEntries?${query.toString()}`
+            );
+            all.push(...(res.modelCatalogEntries || []));
+            if (!res.nextPageToken) {
+              break;
+            }
+            pageToken = res.nextPageToken;
+          }
+          return all.map((entry) => ({
+            ...entry,
+            provider: entry.provider || providerID
+          }));
+        })
+      );
+
+      const availableModels = catalogFetches
+        .filter((item): item is PromiseFulfilledResult<CatalogEntry[]> => item.status === "fulfilled")
+        .flatMap((item) => item.value)
+        .filter((entry) => entry.available)
+        .sort((a, b) => {
+          const providerA = providerLabelByID.get(a.provider) || fallbackProviderLabel(a.provider);
+          const providerB = providerLabelByID.get(b.provider) || fallbackProviderLabel(b.provider);
+          const providerCmp = providerA.localeCompare(providerB);
+          if (providerCmp !== 0) {
+            return providerCmp;
+          }
+          const nameA = (a.displayName || a.modelKey).toLowerCase();
+          const nameB = (b.displayName || b.modelKey).toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+      setModelOptions(availableModels);
+
+      const currentDefault = setting.defaultModel || "";
+      const currentDefaultAvailable = !!currentDefault && availableModels.some((entry) => entry.modelKey === currentDefault);
+      setDefaultModelUnavailable(currentDefault && !currentDefaultAvailable ? currentDefault : "");
+      setDefaultModelInput(currentDefaultAvailable ? currentDefault : (availableModels[0]?.modelKey || ""));
+
+      if (activeModelProvider === MODEL_DEFAULTS_NODE) {
+        setOpenaiProvider(null);
+        setCodexProvider(null);
+        setProviderStatus(null);
+      } else if (activeModelProvider === "openai") {
         const [openai, codex] = await Promise.all([api<Provider>("/v1/providers/openai"), api<Provider>("/v1/providers/openai-codex")]);
         setOpenaiProvider(openai);
         setCodexProvider(codex);
@@ -221,18 +257,12 @@ export default function Page() {
         setCodexProvider(null);
       }
 
-      if (!resetProviderTouched) {
-        const inferred = inferProviderFromModel(setting.defaultModel || "");
-        if (inferred) {
-          setResetProvider(inferred);
-        }
-      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [activeModelProvider, openAIModelProvider, resetProviderTouched]);
+  }, [activeModelProvider]);
 
   useEffect(() => {
     void refresh();
@@ -269,6 +299,26 @@ export default function Page() {
         })
       });
       setApiKey("");
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function disconnectProvider(providerID: "openai" | "openai-codex") {
+    const confirmed = window.confirm(`Disconnect provider "${providerID}"?`);
+    if (!confirmed) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await api(`/v1/providers/${providerID}:disconnect`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
       await refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -349,31 +399,6 @@ export default function Page() {
     }
   }
 
-  async function applyAuthReset() {
-    const confirmed = window.confirm(`Reset auth profiles for provider "${resetProvider}"? This will remove local auth profiles.`);
-    if (!confirmed) {
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api<AuthResetResult>("/v1/auth:reset", {
-        method: "POST",
-        body: JSON.stringify({
-          provider: resetProvider,
-          restart: resetRestart
-        })
-      });
-      setResetResult(res);
-      await refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function renderPlaceholder(title: string, desc: string) {
     return (
       <section className="panel">
@@ -383,22 +408,67 @@ export default function Page() {
     );
   }
 
+  function providerLabel(providerID: string): string {
+    const found = providerSummaries.find((item) => item.providerId === providerID);
+    if (found?.displayName) {
+      return found.displayName;
+    }
+    return fallbackProviderLabel(providerID);
+  }
+
+  function formatContextWindow(windowSize: number): string {
+    if (!windowSize || windowSize <= 0) {
+      return "-";
+    }
+    if (windowSize >= 1000) {
+      return `${Math.round(windowSize / 1000)}k`;
+    }
+    return String(windowSize);
+  }
+
+  function modelOptionLabel(entry: CatalogEntry): string {
+    return `${providerLabel(entry.provider)} | ${entry.displayName || entry.modelKey} | ${entry.input || "-"} | ${formatContextWindow(entry.contextWindow)}`;
+  }
+
+  function providerConnectionLabel(provider: Provider | null): "Connected" | "Not Configured" {
+    return provider?.connection === "CONNECTED" ? "Connected" : "Not Configured";
+  }
+
+  function providerConnectionClass(provider: Provider | null): string {
+    return provider?.connection === "CONNECTED" ? "status-badge status-badge-connected" : "status-badge status-badge-disconnected";
+  }
+
   function renderModelDefaultsSection() {
     return (
       <section className="panel">
         <div className="panel-title-row">
-          <h2>Model Defaults</h2>
+          <h2>Default Model</h2>
           <button className="btn btn-secondary" onClick={refresh} disabled={loading}>
             Refresh
           </button>
         </div>
         <div className="form-row">
-          <input value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} placeholder="openai/gpt-5" />
-          <button className="btn" onClick={updateDefaultModel} disabled={loading || !defaultModelInput.trim()}>
+          <select value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} disabled={loading || modelOptions.length === 0}>
+            {modelOptions.length === 0 && <option value="">No available models</option>}
+            {modelOptions.map((entry) => (
+              <option key={`${entry.provider}:${entry.modelKey}`} value={entry.modelKey}>
+                {modelOptionLabel(entry)}
+              </option>
+            ))}
+          </select>
+          <button className="btn" onClick={updateDefaultModel} disabled={loading || !defaultModelInput.trim() || modelOptions.length === 0}>
             Set Default Model
           </button>
         </div>
+        <p className="muted">Only available models are listed. Format: Provider | Display Name | Input | Context Window.</p>
+        {defaultModelUnavailable && (
+          <p className="muted">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>
+        )}
         <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
+        <details>
+          <summary>Advanced: Available Model Catalog (raw)</summary>
+          <pre>{JSON.stringify(modelOptions, null, 2)}</pre>
+        </details>
       </section>
     );
   }
@@ -416,11 +486,22 @@ export default function Page() {
           <p className="muted">OpenAI provides two auth methods in OpenClaw Console: API Key and Codex subscription.</p>
         </section>
 
-        {renderModelDefaultsSection()}
-
         <section className="panel">
           <h2>Provider Status</h2>
-          <pre>{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
+          <div className="status-grid">
+            <div className="status-row">
+              <span>OpenAI API Key</span>
+              <span className={providerConnectionClass(openaiProvider)}>{providerConnectionLabel(openaiProvider)}</span>
+            </div>
+            <div className="status-row">
+              <span>OpenAI Codex Subscription</span>
+              <span className={providerConnectionClass(codexProvider)}>{providerConnectionLabel(codexProvider)}</span>
+            </div>
+          </div>
+          <details>
+            <summary>Advanced: Raw Provider Status</summary>
+            <pre>{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
+          </details>
         </section>
 
         <section className="panel">
@@ -429,6 +510,15 @@ export default function Page() {
             <input placeholder="sk-..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
             <button className="btn" onClick={connectAPIKey} disabled={loading || !apiKey.trim()}>
               Connect API Key
+            </button>
+            <button
+              className="btn btn-warn"
+              onClick={() => {
+                void disconnectProvider("openai");
+              }}
+              disabled={loading || openaiProvider?.connection !== "CONNECTED"}
+            >
+              Disconnect
             </button>
           </div>
         </section>
@@ -441,6 +531,15 @@ export default function Page() {
             </button>
             <button className="btn btn-warn" onClick={cancelSession} disabled={loading || !codexSession}>
               Cancel Session
+            </button>
+            <button
+              className="btn btn-warn"
+              onClick={() => {
+                void disconnectProvider("openai-codex");
+              }}
+              disabled={loading || codexProvider?.connection !== "CONNECTED"}
+            >
+              Disconnect
             </button>
           </div>
 
@@ -470,43 +569,6 @@ export default function Page() {
             </>
           )}
         </section>
-
-        <section className="panel">
-          <h2>Auth Reset</h2>
-          <div className="form-row">
-            <select
-              value={resetProvider}
-              onChange={(e) => {
-                setResetProvider(e.target.value as ResetProvider);
-                setResetProviderTouched(true);
-              }}
-            >
-              <option value="openai">openai</option>
-              <option value="openai-codex">openai-codex</option>
-              <option value="all">all</option>
-            </select>
-            <select value={resetRestart ? "1" : "0"} onChange={(e) => setResetRestart(e.target.value === "1")}>
-              <option value="1">Restart gateway after reset</option>
-              <option value="0">Do not restart gateway</option>
-            </select>
-            <button className="btn btn-warn" onClick={applyAuthReset} disabled={loading}>
-              Reset Auth
-            </button>
-          </div>
-          <p className="muted">This creates backup files for auth store and config before writing changes.</p>
-          {resetResult && <pre>{JSON.stringify(resetResult, null, 2)}</pre>}
-        </section>
-
-        <section className="panel">
-          <div className="panel-title-row">
-            <h2>Model Catalog Entries</h2>
-            <select value={openAIModelProvider} onChange={(e) => setOpenAIModelProvider(e.target.value as OpenAIModelProvider)}>
-              <option value="openai">openai</option>
-              <option value="openai-codex">openai-codex</option>
-            </select>
-          </div>
-          <pre>{JSON.stringify(catalog, null, 2)}</pre>
-        </section>
       </>
     );
   }
@@ -521,25 +583,40 @@ export default function Page() {
               Docs
             </a>
           </div>
-          <p className="muted">This provider page is read-only for now. You can view status and model catalog entries.</p>
+          <p className="muted">This provider page is read-only for now. You can view provider status.</p>
         </section>
-
-        {renderModelDefaultsSection()}
 
         <section className="panel">
           <h2>Provider Status</h2>
-          <pre>{JSON.stringify(providerStatus, null, 2)}</pre>
-        </section>
-
-        <section className="panel">
-          <h2>Model Catalog Entries</h2>
-          <pre>{JSON.stringify(catalog, null, 2)}</pre>
+          <div className="status-row">
+            <span>{activeProviderLabel}</span>
+            <span className={providerConnectionClass(providerStatus)}>{providerConnectionLabel(providerStatus)}</span>
+          </div>
+          <details>
+            <summary>Advanced: Raw Provider Status</summary>
+            <pre>{JSON.stringify(providerStatus, null, 2)}</pre>
+          </details>
         </section>
       </>
     );
   }
 
+  function renderModelDefaultsWorkspace() {
+    return (
+      <>
+        <section className="panel">
+          <h2>Models</h2>
+          <p className="muted">Set the global default model used by OpenClaw from available catalog entries.</p>
+        </section>
+        {renderModelDefaultsSection()}
+      </>
+    );
+  }
+
   function renderModelsWorkspace() {
+    if (activeModelProvider === MODEL_DEFAULTS_NODE) {
+      return renderModelDefaultsWorkspace();
+    }
     if (activeModelProvider === "openai") {
       return renderOpenAIWorkspace();
     }
@@ -582,6 +659,7 @@ export default function Page() {
                 className={activeNav === "models" ? "nav-item nav-item-active" : "nav-item"}
                 onClick={() => {
                   setActiveNav("models");
+                  setActiveModelProvider(MODEL_DEFAULTS_NODE);
                   setModelsExpanded((prev) => !prev);
                 }}
                 type="button"
@@ -598,6 +676,7 @@ export default function Page() {
                       className={activeNav === "models" && activeModelProvider === item.id ? "subnav-item subnav-item-active" : "subnav-item"}
                       onClick={() => {
                         setActiveNav("models");
+                        setModelsExpanded(true);
                         setActiveModelProvider(item.id);
                       }}
                       type="button"

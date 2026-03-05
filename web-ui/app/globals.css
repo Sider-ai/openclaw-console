@@ -365,6 +365,43 @@ small,
   font-weight: 700;
 }
 
+.status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 124px;
+  border-radius: 999px;
+  border: 1px solid;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-badge-connected {
+  border-color: #2f8750;
+  background: #e4f5ea;
+  color: #16552f;
+}
+
+.status-badge-disconnected {
+  border-color: #9ea9b0;
+  background: #eef1f3;
+  color: #4a5a64;
+}
+
 pre {
   margin: 10px 0 0;
   padding: 10px;
