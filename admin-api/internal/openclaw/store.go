@@ -512,11 +512,22 @@ func restartOpenClaw() (bool, error) {
 		return false, nil
 	}
 	if _, err := exec.LookPath("systemctl"); err != nil {
-		return false, nil
+		return restartOpenClawGateway()
 	}
 	cmd := exec.Command("systemctl", "restart", "openclaw")
 	if err := cmd.Run(); err != nil {
 		return false, fmt.Errorf("restart openclaw service: %w", err)
+	}
+	return true, nil
+}
+
+func restartOpenClawGateway() (bool, error) {
+	if _, err := exec.LookPath("openclaw"); err != nil {
+		return false, nil
+	}
+	cmd := exec.Command("openclaw", "gateway", "restart")
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("restart openclaw gateway: %w", err)
 	}
 	return true, nil
 }

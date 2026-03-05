@@ -82,7 +82,11 @@ func (s *Service) ConnectOpenAIAPIKey(ctx context.Context, apiKey string, defaul
 	if strings.TrimSpace(apiKey) == "" {
 		return ProviderResource{}, ModelSettingResource{}, fmt.Errorf("apiKey is required")
 	}
-	if err := s.store.UpsertOpenAIAPIKey(ctx, apiKey, defaultModel, s.cli); err != nil {
+	resolvedDefaultModel, err := s.resolveOpenAIDefaultModel(ctx, defaultModel)
+	if err != nil {
+		return ProviderResource{}, ModelSettingResource{}, err
+	}
+	if err := s.store.UpsertOpenAIAPIKey(ctx, apiKey, resolvedDefaultModel, s.cli); err != nil {
 		return ProviderResource{}, ModelSettingResource{}, err
 	}
 	providerRes, err := s.GetProvider(ctx, "openai")
@@ -94,6 +98,37 @@ func (s *Service) ConnectOpenAIAPIKey(ctx context.Context, apiKey string, defaul
 		return ProviderResource{}, ModelSettingResource{}, err
 	}
 	return providerRes, modelRes, nil
+}
+
+func (s *Service) resolveOpenAIDefaultModel(ctx context.Context, requested string) (string, error) {
+	const fallbackOpenAIModel = "openai/gpt-5"
+
+	req := strings.TrimSpace(requested)
+	if strings.HasPrefix(req, "openai/") {
+		return req, nil
+	}
+
+	status, err := s.cli.ModelsStatus(ctx)
+	if err == nil && strings.HasPrefix(strings.TrimSpace(status.DefaultModel), "openai/") {
+		return strings.TrimSpace(status.DefaultModel), nil
+	}
+
+	list, err := s.cli.ModelsList(ctx, "openai")
+	if err != nil {
+		return fallbackOpenAIModel, nil
+	}
+
+	for _, m := range list.Models {
+		if strings.HasPrefix(strings.TrimSpace(m.Key), "openai/") && m.Available {
+			return strings.TrimSpace(m.Key), nil
+		}
+	}
+	for _, m := range list.Models {
+		if strings.HasPrefix(strings.TrimSpace(m.Key), "openai/") {
+			return strings.TrimSpace(m.Key), nil
+		}
+	}
+	return fallbackOpenAIModel, nil
 }
 
 func (s *Service) DisconnectProvider(ctx context.Context, provider string) (ProviderResource, error) {
