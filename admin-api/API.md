@@ -23,7 +23,7 @@ Canonical machine-readable spec: `openapi.yaml`
 
 - `GET /api/v1/providers`
 - `GET /api/v1/providers/{provider}`
-- `POST /api/v1/providers/openai:connectApiKey`
+- `POST /api/v1/providers/{provider}:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
 - `POST /api/v1/auth:reset`
 
@@ -39,8 +39,8 @@ Canonical machine-readable spec: `openapi.yaml`
 ## Notes
 
 - `GET /api/v1/providers/{provider}` and `GET /api/v1/modelCatalogEntries` support providers discovered by local OpenClaw CLI.
-- Mutating provider operations remain managed for `openai` and `openai-codex` only:
-  - `POST /api/v1/providers/openai:connectApiKey`
+- Mutating provider operations are managed for providers flagged by the API as `supportsApiKey=true`, plus `openai-codex`:
+  - `POST /api/v1/providers/{provider}:connectApiKey`
   - `POST /api/v1/providers/{provider}:disconnect`
   - `GET /api/v1/providers/{provider}/authProfiles`
   - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`

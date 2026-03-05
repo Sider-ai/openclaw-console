@@ -39,7 +39,7 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 - `PATCH /api/v1/modelSettings/default?update_mask=default_model`
 - `GET /api/v1/providers`
 - `GET /api/v1/providers/{provider}`
-- `POST /api/v1/providers/openai:connectApiKey`
+- `POST /api/v1/providers/{provider}:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
 - `POST /api/v1/auth:reset`
 - `GET /api/v1/providers/{provider}/authProfiles`

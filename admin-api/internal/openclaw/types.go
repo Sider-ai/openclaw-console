@@ -15,6 +15,7 @@ type ModelSettingResource struct {
 type ProviderResource struct {
 	Name           string   `json:"name"`
 	ProviderID     string   `json:"providerId"`
+	SupportsAPIKey bool     `json:"supportsApiKey"`
 	Connection     string   `json:"connection"`
 	AuthType       string   `json:"authType"`
 	ProfileLabels  []string `json:"profileLabels,omitempty"`
@@ -23,10 +24,11 @@ type ProviderResource struct {
 }
 
 type ProviderSummaryResource struct {
-	Name        string `json:"name"`
-	ProviderID  string `json:"providerId"`
-	DisplayName string `json:"displayName"`
-	Managed     bool   `json:"managed"`
+	Name           string `json:"name"`
+	ProviderID     string `json:"providerId"`
+	DisplayName    string `json:"displayName"`
+	SupportsAPIKey bool   `json:"supportsApiKey"`
+	Managed        bool   `json:"managed"`
 }
 
 type ProfileResource struct {

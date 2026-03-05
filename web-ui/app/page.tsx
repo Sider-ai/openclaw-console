@@ -10,6 +10,7 @@ type ModelSetting = {
 type Provider = {
   name: string;
   providerId: string;
+  supportsApiKey: boolean;
   connection: string;
   authType: string;
   profileLabels?: string[];
@@ -19,6 +20,7 @@ type ProviderSummary = {
   name: string;
   providerId: string;
   displayName: string;
+  supportsApiKey: boolean;
   managed: boolean;
 };
 
@@ -287,15 +289,14 @@ export default function Page() {
     return () => clearInterval(timer);
   }, [codexSession?.sessionId, inProgress, refresh]);
 
-  async function connectAPIKey() {
+  async function connectAPIKey(providerID: string) {
     setLoading(true);
     setError("");
     try {
-      await api("/v1/providers/openai:connectApiKey", {
+      await api(`/v1/providers/${encodeURIComponent(providerID)}:connectApiKey`, {
         method: "POST",
         body: JSON.stringify({
-          apiKey,
-          defaultModel: defaultModelInput || undefined
+          apiKey
         })
       });
       setApiKey("");
@@ -307,7 +308,7 @@ export default function Page() {
     }
   }
 
-  async function disconnectProvider(providerID: "openai" | "openai-codex") {
+  async function disconnectProvider(providerID: string) {
     const confirmed = window.confirm(`Disconnect provider "${providerID}"?`);
     if (!confirmed) {
       return;
@@ -508,7 +509,13 @@ export default function Page() {
           <h2>OpenAI API Key</h2>
           <div className="form-row">
             <input placeholder="sk-..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-            <button className="btn" onClick={connectAPIKey} disabled={loading || !apiKey.trim()}>
+            <button
+              className="btn"
+              onClick={() => {
+                void connectAPIKey("openai");
+              }}
+              disabled={loading || !apiKey.trim() || openaiProvider?.supportsApiKey !== true}
+            >
               Connect API Key
             </button>
             <button
@@ -574,6 +581,7 @@ export default function Page() {
   }
 
   function renderReadOnlyProviderWorkspace() {
+    const supportsAPIKey = providerStatus?.supportsApiKey === true;
     return (
       <>
         <section className="panel">
@@ -583,7 +591,9 @@ export default function Page() {
               Docs
             </a>
           </div>
-          <p className="muted">This provider page is read-only for now. You can view provider status.</p>
+          <p className="muted">
+            {supportsAPIKey ? "Configure API key authentication for this provider." : "This provider page is read-only for now. You can view provider status."}
+          </p>
         </section>
 
         <section className="panel">
@@ -597,6 +607,33 @@ export default function Page() {
             <pre>{JSON.stringify(providerStatus, null, 2)}</pre>
           </details>
         </section>
+
+        {supportsAPIKey && (
+          <section className="panel">
+            <h2>{activeProviderLabel} API Key</h2>
+            <div className="form-row">
+              <input placeholder="Provider API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              <button
+                className="btn"
+                onClick={() => {
+                  void connectAPIKey(activeModelProvider);
+                }}
+                disabled={loading || !apiKey.trim()}
+              >
+                Connect API Key
+              </button>
+              <button
+                className="btn btn-warn"
+                onClick={() => {
+                  void disconnectProvider(activeModelProvider);
+                }}
+                disabled={loading || providerStatus?.connection !== "CONNECTED"}
+              >
+                Disconnect
+              </button>
+            </div>
+          </section>
+        )}
       </>
     );
   }

@@ -16,8 +16,7 @@ type patchModelSettingRequest struct {
 }
 
 type connectAPIKeyRequest struct {
-	APIKey       string `json:"apiKey"`
-	DefaultModel string `json:"defaultModel,omitempty"`
+	APIKey string `json:"apiKey"`
 }
 
 type resetAuthRequest struct {
@@ -44,9 +43,4 @@ type providerListResponse struct {
 
 type authProfileListResponse struct {
 	AuthProfiles any `json:"authProfiles"`
-}
-
-type connectAPIKeyResponse struct {
-	Provider     any `json:"provider"`
-	ModelSetting any `json:"modelSetting"`
 }

@@ -43,17 +43,23 @@ type AuthCredential struct {
 	TokenRef  string `json:"tokenRef,omitempty"`
 }
 
-func (s *Store) UpsertOpenAIAPIKey(ctx context.Context, apiKey string, defaultModel string, cli *CLI) error {
+func (s *Store) UpsertProviderAPIKey(_ context.Context, provider string, apiKey string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return fmt.Errorf("provider is required")
+	}
 
 	auth, err := s.readAuthStore(s.paths.AuthStorePath)
 	if err != nil {
 		return err
 	}
-	auth.Profiles["openai:default"] = AuthCredential{
+	profileID := provider + ":default"
+	auth.Profiles[profileID] = AuthCredential{
 		Type:     "api_key",
-		Provider: "openai",
+		Provider: provider,
 		Key:      strings.TrimSpace(apiKey),
 	}
 	if err := s.writeJSONAtomic(s.paths.AuthStorePath, auth); err != nil {
@@ -64,18 +70,12 @@ func (s *Store) UpsertOpenAIAPIKey(ctx context.Context, apiKey string, defaultMo
 	if err != nil {
 		return err
 	}
-	setNestedMapValue(cfg, []string{"auth", "profiles", "openai:default"}, map[string]any{
-		"provider": "openai",
+	setNestedMapValue(cfg, []string{"auth", "profiles", profileID}, map[string]any{
+		"provider": provider,
 		"mode":     "api_key",
 	})
 	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
 		return err
-	}
-
-	if defaultModel != "" {
-		if err := cli.SetDefaultModel(ctx, defaultModel); err != nil {
-			return err
-		}
 	}
 
 	return maybeRestartOpenClaw()
