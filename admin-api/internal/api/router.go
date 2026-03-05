@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Sider-ai/sider-openclaw-console/admin-api/internal/ui"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -21,7 +22,7 @@ func NewRouter(h *Handler) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	r.Route("/v1", func(r chi.Router) {
+	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/modelSettings/default", h.GetDefaultModelSetting)
 		r.Patch("/modelSettings/default", h.PatchDefaultModelSetting)
 
@@ -39,6 +40,9 @@ func NewRouter(h *Handler) http.Handler {
 		r.Post("/codexAuthSessions/{codex_auth_session}:cancel", h.CancelCodexSession)
 		r.Get("/codexAuthSessions/{codex_auth_session}", h.GetCodexAuthSession)
 	})
+
+	uiHandler := ui.NewHandler()
+	r.NotFound(uiHandler.ServeHTTP)
 
 	return r
 }

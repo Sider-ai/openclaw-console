@@ -34,7 +34,7 @@ type CodexSession = {
 
 type NavKey = "agents" | "channels" | "tools" | "models";
 
-const API_BASE = process.env.NEXT_PUBLIC_ADMIN_API_BASE || "http://localhost:18080";
+const API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_BASE || "/api").replace(/\/$/, "");
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: "agents", label: "Agents" },

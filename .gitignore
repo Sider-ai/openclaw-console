@@ -5,6 +5,9 @@
 web-ui/node_modules/
 web-ui/.next/
 web-ui/out/
+/dist/
+admin-api/internal/ui/dist/*
+!admin-api/internal/ui/dist/.keep
 
 # Frontend env files
 web-ui/.env.local

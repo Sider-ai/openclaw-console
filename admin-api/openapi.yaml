@@ -38,7 +38,7 @@ paths:
                 type: string
                 example: ok
 
-  /v1/modelSettings/default:
+  /api/v1/modelSettings/default:
     get:
       tags: [ModelSettings]
       operationId: getDefaultModelSetting
@@ -84,7 +84,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/providers/{provider}:
+  /api/v1/providers/{provider}:
     get:
       tags: [Providers]
       operationId: getProvider
@@ -103,7 +103,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  '/v1/providers/openai:connectApiKey':
+  '/api/v1/providers/openai:connectApiKey':
     post:
       tags: [Providers]
       operationId: connectOpenaiApiKey
@@ -126,7 +126,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  '/v1/providers/{provider}:disconnect':
+  '/api/v1/providers/{provider}:disconnect':
     post:
       tags: [Providers]
       operationId: disconnectProvider
@@ -145,7 +145,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/providers/{provider}/authProfiles:
+  /api/v1/providers/{provider}/authProfiles:
     get:
       tags: [AuthProfiles]
       operationId: listAuthProfiles
@@ -164,7 +164,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/providers/{provider}/authProfiles/{auth_profile}:
+  /api/v1/providers/{provider}/authProfiles/{auth_profile}:
     get:
       tags: [AuthProfiles]
       operationId: getAuthProfile
@@ -184,7 +184,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/modelCatalogEntries:
+  /api/v1/modelCatalogEntries:
     get:
       tags: [ModelCatalogEntries]
       operationId: listModelCatalogEntries
@@ -225,7 +225,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/codexAuthSessions:
+  /api/v1/codexAuthSessions:
     post:
       tags: [CodexAuthSessions]
       operationId: createCodexAuthSession
@@ -249,7 +249,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /v1/codexAuthSessions/{codex_auth_session}:
+  /api/v1/codexAuthSessions/{codex_auth_session}:
     get:
       tags: [CodexAuthSessions]
       operationId: getCodexAuthSession
@@ -268,7 +268,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  '/v1/codexAuthSessions/{codex_auth_session}:submitRedirect':
+  '/api/v1/codexAuthSessions/{codex_auth_session}:submitRedirect':
     post:
       tags: [CodexAuthSessions]
       operationId: submitCodexRedirect
@@ -297,7 +297,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  '/v1/codexAuthSessions/{codex_auth_session}:cancel':
+  '/api/v1/codexAuthSessions/{codex_auth_session}:cancel':
     post:
       tags: [CodexAuthSessions]
       operationId: cancelCodexAuthSession

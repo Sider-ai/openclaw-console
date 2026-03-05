@@ -20,13 +20,29 @@ go run ./cmd/server
 ```bash
 cd web-ui
 npm install
-NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080 npm run dev
+NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev
 ```
 
 3. Open:
 
 - Web UI: `http://127.0.0.1:3000`
 - Admin API health: `http://127.0.0.1:18080/healthz`
+
+## Single Binary Build
+
+Build web assets, embed them into `admin-api`, and produce one executable:
+
+```bash
+./scripts/build-single-binary.sh
+```
+
+Run:
+
+```bash
+./dist/openclaw-console
+```
+
+Then open `http://127.0.0.1:18080` (Web UI) and `http://127.0.0.1:18080/healthz`.
 
 ## Validation
 

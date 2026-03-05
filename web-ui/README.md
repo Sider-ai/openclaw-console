@@ -13,7 +13,17 @@ Minimal admin UI for:
 ```bash
 cd web-ui
 npm install
-NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080 npm run dev -- -p 3001
+NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev -- -p 3001
 ```
 
 Open http://127.0.0.1:3001
+
+## Static Build Output
+
+`next.config.mjs` uses `output: "export"`, so:
+
+```bash
+npm run build
+```
+
+exports static files to `web-ui/out/` for embedding into the Go binary.

@@ -1,6 +1,6 @@
 # Admin API (AIP Resource-Oriented)
 
-Version prefix: `/v1`
+Version prefix: `/api/v1`
 
 Canonical machine-readable spec: `openapi.yaml`
 
@@ -16,30 +16,30 @@ Canonical machine-readable spec: `openapi.yaml`
 
 ### ModelSettings
 
-- `GET /v1/modelSettings/default`
-- `PATCH /v1/modelSettings/default?update_mask=default_model`
+- `GET /api/v1/modelSettings/default`
+- `PATCH /api/v1/modelSettings/default?update_mask=default_model`
 
 ### Providers
 
-- `GET /v1/providers/{provider}`
-- `POST /v1/providers/openai:connectApiKey`
-- `POST /v1/providers/{provider}:disconnect`
+- `GET /api/v1/providers/{provider}`
+- `POST /api/v1/providers/openai:connectApiKey`
+- `POST /api/v1/providers/{provider}:disconnect`
 
 ### AuthProfiles
 
-- `GET /v1/providers/{provider}/authProfiles`
-- `GET /v1/providers/{provider}/authProfiles/{auth_profile}`
+- `GET /api/v1/providers/{provider}/authProfiles`
+- `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
 
 ### ModelCatalogEntries
 
-- `GET /v1/modelCatalogEntries?provider=openai|openai-codex&page_size=&page_token=`
+- `GET /api/v1/modelCatalogEntries?provider=openai|openai-codex&page_size=&page_token=`
 
 ### CodexAuthSessions
 
-- `POST /v1/codexAuthSessions`
-- `GET /v1/codexAuthSessions/{codex_auth_session}`
-- `POST /v1/codexAuthSessions/{codex_auth_session}:submitRedirect`
-- `POST /v1/codexAuthSessions/{codex_auth_session}:cancel`
+- `POST /api/v1/codexAuthSessions`
+- `GET /api/v1/codexAuthSessions/{codex_auth_session}`
+- `POST /api/v1/codexAuthSessions/{codex_auth_session}:submitRedirect`
+- `POST /api/v1/codexAuthSessions/{codex_auth_session}:cancel`
 
 ## Error shape
 
