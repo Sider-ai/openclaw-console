@@ -169,25 +169,55 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 		return m.toResource(s), err
 	}
 
-	select {
-	case <-ctx.Done():
-		return CodexAuthSessionResource{}, ctx.Err()
-	case <-time.After(90 * time.Second):
-		// Some OpenClaw onboard flows persist OAuth credentials but do not exit promptly.
-		// Attempt a best-effort merge before marking timeout.
-		if err := m.mergeFromTemp(s); err == nil {
-			s.cancel()
-			_ = s.ptmx.Close()
-		} else {
-			// Merge failed; stop lingering onboard process to avoid orphaned sessions.
-			s.cancel()
-			_ = s.ptmx.Close()
-		}
-	case err := <-s.done:
-		if err != nil {
-			// If process exits non-zero after credentials were already written,
-			// mergeFromTemp keeps richer failure details (if any).
-			_ = m.mergeFromTemp(s)
+	timeout := time.NewTimer(90 * time.Second)
+	poll := time.NewTicker(250 * time.Millisecond)
+	defer timeout.Stop()
+	defer poll.Stop()
+
+	done := false
+	for !done {
+		select {
+		case <-ctx.Done():
+			return CodexAuthSessionResource{}, ctx.Err()
+		case <-poll.C:
+			ready, err := m.tempHasCodexProfile(s)
+			if err != nil {
+				m.failSession(s, "TEMP_AUTH_READ_FAILED", err.Error())
+				s.cancel()
+				_ = s.ptmx.Close()
+				done = true
+				continue
+			}
+			if !ready {
+				continue
+			}
+			if err := m.mergeFromTemp(s); err == nil {
+				s.cancel()
+				_ = s.ptmx.Close()
+			} else {
+				s.cancel()
+				_ = s.ptmx.Close()
+			}
+			done = true
+		case <-timeout.C:
+			// Some OpenClaw onboard flows persist OAuth credentials but do not exit promptly.
+			// Attempt a best-effort merge before marking timeout.
+			if err := m.mergeFromTemp(s); err == nil {
+				s.cancel()
+				_ = s.ptmx.Close()
+			} else {
+				// Merge failed; stop lingering onboard process to avoid orphaned sessions.
+				s.cancel()
+				_ = s.ptmx.Close()
+			}
+			done = true
+		case err := <-s.done:
+			if err != nil {
+				// If process exits non-zero after credentials were already written,
+				// mergeFromTemp keeps richer failure details (if any).
+				_ = m.mergeFromTemp(s)
+			}
+			done = true
 		}
 	}
 
@@ -297,6 +327,19 @@ func (m *SessionManager) mergeFromTemp(s *codexSession) error {
 	s.errorMessage = ""
 	m.mu.Unlock()
 	return nil
+}
+
+func (m *SessionManager) tempHasCodexProfile(s *codexSession) (bool, error) {
+	tempStore, err := m.store.readAuthStore(s.tmpPaths.AuthStorePath)
+	if err != nil {
+		return false, err
+	}
+	for _, cred := range tempStore.Profiles {
+		if cred.Provider == "openai-codex" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *SessionManager) toResource(s *codexSession) CodexAuthSessionResource {
