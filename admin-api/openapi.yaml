@@ -7,9 +7,11 @@ info:
     AIP-style, resource-oriented HTTP API for configuring OpenClaw model settings
     and provider authentication.
 
-    This API currently supports provider flows for:
+    Mutating provider flows currently supported:
     - OpenAI API Key (`openai`)
     - OpenAI Codex OAuth subscription (`openai-codex`)
+
+    Provider reads are discovered from local OpenClaw CLI.
 
 servers:
   - url: http://127.0.0.1:18080
@@ -81,6 +83,21 @@ paths:
                 $ref: '#/components/schemas/ModelSetting'
         '400':
           $ref: '#/components/responses/InvalidArgument'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/providers:
+    get:
+      tags: [Providers]
+      operationId: listProviders
+      summary: List providers discovered by local OpenClaw CLI
+      responses:
+        '200':
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProvidersResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -221,7 +238,6 @@ paths:
           required: true
           schema:
             type: string
-            enum: [openai, openai-codex]
         - name: page_size
           in: query
           required: false
@@ -357,7 +373,6 @@ components:
       required: true
       schema:
         type: string
-        enum: [openai, openai-codex]
       description: Provider ID.
 
     AuthProfileParam:
@@ -475,7 +490,6 @@ components:
           example: providers/openai
         providerId:
           type: string
-          enum: [openai, openai-codex]
         connection:
           type: string
           enum: [NOT_CONFIGURED, CONNECTED]
@@ -492,6 +506,30 @@ components:
           type: array
           items:
             type: string
+
+    ProviderSummary:
+      type: object
+      required: [name, providerId, displayName, managed]
+      properties:
+        name:
+          type: string
+          example: providers/openai
+        providerId:
+          type: string
+        displayName:
+          type: string
+          example: OpenAI
+        managed:
+          type: boolean
+
+    ListProvidersResponse:
+      type: object
+      required: [providers]
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderSummary'
 
     ConnectOpenAIAPIKeyRequest:
       type: object
@@ -605,7 +643,6 @@ components:
           type: string
         provider:
           type: string
-          enum: [openai, openai-codex]
         input:
           type: string
         contextWindow:

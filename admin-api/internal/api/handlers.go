@@ -56,6 +56,15 @@ func (h *Handler) PatchDefaultModelSetting(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, res)
 }
 
+func (h *Handler) ListProviders(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListProviders(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, providerListResponse{Providers: items})
+}
+
 func (h *Handler) GetProvider(w http.ResponseWriter, r *http.Request) {
 	providerID := chi.URLParam(r, "provider")
 	res, err := h.service.GetProvider(r.Context(), providerID)
@@ -177,8 +186,8 @@ func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request
 
 	items, next, err := h.service.ListModelCatalogEntries(r.Context(), provider, pageToken, pageSize)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
+		if strings.Contains(err.Error(), "provider is required") {
+			writeBadRequest(w, err.Error())
 			return
 		}
 		if strings.Contains(err.Error(), "page token") {

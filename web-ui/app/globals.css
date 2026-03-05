@@ -163,6 +163,12 @@ a {
   gap: 8px;
 }
 
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .nav-item {
   width: 100%;
   text-align: left;
@@ -184,6 +190,52 @@ a {
   border-color: #2f6f79;
   background: #e7f4f7;
   color: #13414a;
+}
+
+.nav-item span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-caret {
+  float: right;
+  color: #2b4c54;
+}
+
+.subnav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 10px;
+}
+
+.subnav-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d2d7cf;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #faf9f5;
+  color: #2d3a42;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.subnav-item:hover {
+  border-color: #9db4bc;
+  background: #f5fbfd;
+}
+
+.subnav-item-active {
+  border-color: #2f6f79;
+  background: #e7f4f7;
+  color: #13414a;
+}
+
+.subnav-empty {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 13px;
 }
 
 .workspace {
@@ -336,6 +388,14 @@ pre {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .nav-group {
+    grid-column: 1 / -1;
+  }
+
+  .subnav-list {
+    padding-left: 0;
   }
 }
 

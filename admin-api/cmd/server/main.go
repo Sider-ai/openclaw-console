@@ -25,12 +25,14 @@ func main() {
 	router := api.NewRouter(handler)
 
 	addr := envOrDefault("OPENCLAW_ADMIN_ADDR", ":18080")
+	// submitRedirect can block up to ~95s while waiting for onboard completion,
+	// so WriteTimeout must be higher than that request window.
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		WriteTimeout:      2 * time.Minute,
 		IdleTimeout:       60 * time.Second,
 	}
 

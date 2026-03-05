@@ -7,7 +7,7 @@ Canonical machine-readable spec: `openapi.yaml`
 ## Resources
 
 - `modelSettings/default`
-- `providers/{provider}` where `provider` is `openai` or `openai-codex`
+- `providers/{provider}` where `provider` is discovered from local `openclaw models list --all`
 - `providers/{provider}/authProfiles/{auth_profile}`
 - `modelCatalogEntries/{model_catalog_entry}`
 - `codexAuthSessions/{codex_auth_session}`
@@ -21,6 +21,7 @@ Canonical machine-readable spec: `openapi.yaml`
 
 ### Providers
 
+- `GET /api/v1/providers`
 - `GET /api/v1/providers/{provider}`
 - `POST /api/v1/providers/openai:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
@@ -33,7 +34,16 @@ Canonical machine-readable spec: `openapi.yaml`
 
 ### ModelCatalogEntries
 
-- `GET /api/v1/modelCatalogEntries?provider=openai|openai-codex&page_size=&page_token=`
+- `GET /api/v1/modelCatalogEntries?provider={provider}&page_size=&page_token=`
+
+## Notes
+
+- `GET /api/v1/providers/{provider}` and `GET /api/v1/modelCatalogEntries` support providers discovered by local OpenClaw CLI.
+- Mutating provider operations remain managed for `openai` and `openai-codex` only:
+  - `POST /api/v1/providers/openai:connectApiKey`
+  - `POST /api/v1/providers/{provider}:disconnect`
+  - `GET /api/v1/providers/{provider}/authProfiles`
+  - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
 
 ### CodexAuthSessions
 

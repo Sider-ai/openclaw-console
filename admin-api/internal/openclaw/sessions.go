@@ -164,7 +164,7 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 	s.state = sessionStateExchangingToken
 	m.mu.Unlock()
 
-	if _, err := s.ptmx.Write([]byte(strings.TrimSpace(redirectURL) + "\n")); err != nil {
+	if _, err := s.ptmx.Write([]byte(strings.TrimSpace(redirectURL) + "\r")); err != nil {
 		m.failSession(s, "SESSION_WRITE_FAILED", fmt.Sprintf("write redirect url: %v", err))
 		return m.toResource(s), err
 	}
@@ -175,18 +175,19 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 	case <-time.After(90 * time.Second):
 		// Some OpenClaw onboard flows persist OAuth credentials but do not exit promptly.
 		// Attempt a best-effort merge before marking timeout.
-		if err := m.mergeFromTemp(s); err != nil {
-			m.failSession(s, "SESSION_TIMEOUT", "timed out waiting for onboard completion")
+		if err := m.mergeFromTemp(s); err == nil {
+			s.cancel()
+			_ = s.ptmx.Close()
 		} else {
+			// Merge failed; stop lingering onboard process to avoid orphaned sessions.
 			s.cancel()
 			_ = s.ptmx.Close()
 		}
 	case err := <-s.done:
 		if err != nil {
-			// If process exits non-zero after credentials were already written, keep flow recoverable.
-			if mergeErr := m.mergeFromTemp(s); mergeErr != nil {
-				m.failSession(s, "ONBOARD_FAILED", err.Error())
-			}
+			// If process exits non-zero after credentials were already written,
+			// mergeFromTemp keeps richer failure details (if any).
+			_ = m.mergeFromTemp(s)
 		}
 	}
 

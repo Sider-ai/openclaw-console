@@ -26,6 +26,7 @@ func NewRouter(h *Handler) http.Handler {
 		r.Get("/modelSettings/default", h.GetDefaultModelSetting)
 		r.Patch("/modelSettings/default", h.PatchDefaultModelSetting)
 
+		r.Get("/providers", h.ListProviders)
 		r.Get("/providers/{provider}", h.GetProvider)
 		r.Post("/providers/openai:connectApiKey", h.ConnectOpenAIAPIKey)
 		r.Post("/providers/{provider}:disconnect", h.DisconnectProvider)

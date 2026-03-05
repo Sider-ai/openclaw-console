@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -37,9 +38,65 @@ func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (
 	return s.GetModelSetting(ctx)
 }
 
+func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummaryResource, error) {
+	providerSet := map[string]struct{}{}
+
+	list, err := s.cli.ModelsList(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	for _, model := range list.Models {
+		provider := providerFromModelKey(model.Key)
+		if provider == "" {
+			continue
+		}
+		providerSet[provider] = struct{}{}
+	}
+
+	status, err := s.cli.ModelsStatus(ctx)
+	if err == nil {
+		for _, item := range status.Auth.Providers {
+			if strings.TrimSpace(item.Provider) == "" {
+				continue
+			}
+			providerSet[strings.TrimSpace(item.Provider)] = struct{}{}
+		}
+		for _, item := range status.Auth.ProvidersWithOAuth {
+			if strings.TrimSpace(item) == "" {
+				continue
+			}
+			providerSet[strings.TrimSpace(item)] = struct{}{}
+		}
+		for _, item := range status.Auth.MissingProvidersInUse {
+			if strings.TrimSpace(item) == "" {
+				continue
+			}
+			providerSet[strings.TrimSpace(item)] = struct{}{}
+		}
+	}
+
+	providerIDs := make([]string, 0, len(providerSet))
+	for provider := range providerSet {
+		providerIDs = append(providerIDs, provider)
+	}
+	sort.Strings(providerIDs)
+
+	out := make([]ProviderSummaryResource, 0, len(providerIDs))
+	for _, provider := range providerIDs {
+		out = append(out, ProviderSummaryResource{
+			Name:        "providers/" + provider,
+			ProviderID:  provider,
+			DisplayName: providerDisplayName(provider),
+			Managed:     isManagedProvider(provider),
+		})
+	}
+	return out, nil
+}
+
 func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderResource, error) {
-	if !isSupportedProvider(provider) {
-		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return ProviderResource{}, fmt.Errorf("provider is required")
 	}
 	status, err := s.cli.ModelsStatus(ctx)
 	if err != nil {
@@ -132,7 +189,7 @@ func (s *Service) resolveOpenAIDefaultModel(ctx context.Context, requested strin
 }
 
 func (s *Service) DisconnectProvider(ctx context.Context, provider string) (ProviderResource, error) {
-	if !isSupportedProvider(provider) {
+	if !isManagedProvider(provider) {
 		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
 	}
 	if err := s.store.DisconnectProvider(ctx, provider); err != nil {
@@ -153,22 +210,23 @@ func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) 
 }
 
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
-	if provider != "" && !isSupportedProvider(provider) {
+	if provider != "" && !isManagedProvider(provider) {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
 	return s.store.ListAuthProfiles(provider)
 }
 
 func (s *Service) GetAuthProfile(provider, profileID string) (*ProfileResource, error) {
-	if !isSupportedProvider(provider) {
+	if !isManagedProvider(provider) {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
 	return s.store.GetAuthProfile(provider, profileID)
 }
 
 func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageToken string, pageSize int) ([]ModelCatalogEntryResource, string, error) {
-	if !isSupportedProvider(provider) {
-		return nil, "", fmt.Errorf("unsupported provider: %s", provider)
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return nil, "", fmt.Errorf("provider is required")
 	}
 	if pageSize <= 0 {
 		pageSize = 50
@@ -212,7 +270,7 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 	return entries, next, nil
 }
 
-func isSupportedProvider(provider string) bool {
+func isManagedProvider(provider string) bool {
 	switch provider {
 	case "openai", "openai-codex":
 		return true
@@ -233,4 +291,51 @@ func isSupportedResetProvider(provider string) bool {
 func sanitizeModelKey(key string) string {
 	replacer := strings.NewReplacer("/", "~", " ", "_")
 	return replacer.Replace(key)
+}
+
+func providerFromModelKey(key string) string {
+	raw := strings.TrimSpace(key)
+	if raw == "" {
+		return ""
+	}
+	parts := strings.SplitN(raw, "/", 2)
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(parts[0])
+}
+
+func providerDisplayName(provider string) string {
+	switch provider {
+	case "openai":
+		return "OpenAI"
+	case "openai-codex":
+		return "OpenAI Codex"
+	case "amazon-bedrock":
+		return "Amazon Bedrock"
+	case "github-copilot":
+		return "GitHub Copilot"
+	case "xai":
+		return "xAI"
+	case "zai":
+		return "Z.AI"
+	default:
+		return humanizeProviderID(provider)
+	}
+}
+
+func humanizeProviderID(provider string) string {
+	words := strings.FieldsFunc(provider, func(r rune) bool {
+		return r == '-' || r == '_'
+	})
+	if len(words) == 0 {
+		return provider
+	}
+	for i, word := range words {
+		if word == "" {
+			continue
+		}
+		words[i] = strings.ToUpper(word[:1]) + word[1:]
+	}
+	return strings.Join(words, " ")
 }

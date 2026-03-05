@@ -15,6 +15,18 @@ type Provider = {
   profileLabels?: string[];
 };
 
+type ProviderSummary = {
+  name: string;
+  providerId: string;
+  displayName: string;
+  managed: boolean;
+};
+
+type ModelProviderNav = {
+  id: string;
+  label: string;
+};
+
 type CatalogEntry = {
   name: string;
   modelKey: string;
@@ -48,14 +60,15 @@ type AuthResetResult = {
 
 type NavKey = "agents" | "channels" | "tools" | "models";
 type ResetProvider = "openai" | "openai-codex" | "all";
+type OpenAIModelProvider = "openai" | "openai-codex";
 
 const API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_BASE || "/api").replace(/\/$/, "");
+const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
 
-const NAV_ITEMS: { key: NavKey; label: string }[] = [
+const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models">; label: string }[] = [
   { key: "agents", label: "Agents" },
   { key: "channels", label: "Channels" },
-  { key: "tools", label: "Tools" },
-  { key: "models", label: "Models" }
+  { key: "tools", label: "Tools" }
 ];
 
 function inferProviderFromModel(defaultModel: string): ResetProvider | "" {
@@ -66,19 +79,71 @@ function inferProviderFromModel(defaultModel: string): ResetProvider | "" {
   return "";
 }
 
+function fallbackProviderLabel(providerId: string): string {
+  const parts = providerId
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1));
+  return parts.join(" ") || providerId;
+}
+
+function buildModelProviderNav(providers: ProviderSummary[]): ModelProviderNav[] {
+  const byID = new Map<string, ProviderSummary>();
+  providers.forEach((item) => byID.set(item.providerId, item));
+
+  const out: ModelProviderNav[] = [];
+  const hasOpenAI = byID.has("openai") || byID.has("openai-codex");
+
+  if (hasOpenAI) {
+    out.push({ id: "openai", label: "OpenAI" });
+  }
+
+  const sorted = [...providers].sort((a, b) => a.displayName.localeCompare(b.displayName));
+  sorted.forEach((item) => {
+    if (item.providerId === "openai-codex") {
+      return;
+    }
+    if (item.providerId === "openai" && hasOpenAI) {
+      return;
+    }
+    out.push({
+      id: item.providerId,
+      label: item.displayName || fallbackProviderLabel(item.providerId)
+    });
+  });
+
+  if (out.length === 0) {
+    out.push({ id: "openai", label: "OpenAI" });
+  }
+
+  return out;
+}
+
+function providerDocsURL(provider: string): string {
+  if (provider === "openai") {
+    return `${DOCS_PROVIDER_ROOT}/openai`;
+  }
+  return DOCS_PROVIDER_ROOT;
+}
+
 export default function Page() {
   const [activeNav, setActiveNav] = useState<NavKey>("models");
+  const [modelsExpanded, setModelsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [modelSetting, setModelSetting] = useState<ModelSetting | null>(null);
+  const [providerNav, setProviderNav] = useState<ModelProviderNav[]>([]);
+  const [activeModelProvider, setActiveModelProvider] = useState("openai");
+
   const [openaiProvider, setOpenaiProvider] = useState<Provider | null>(null);
   const [codexProvider, setCodexProvider] = useState<Provider | null>(null);
+  const [providerStatus, setProviderStatus] = useState<Provider | null>(null);
 
   const [apiKey, setApiKey] = useState("");
   const [defaultModelInput, setDefaultModelInput] = useState("");
 
-  const [providerFilter, setProviderFilter] = useState("openai");
+  const [openAIModelProvider, setOpenAIModelProvider] = useState<OpenAIModelProvider>("openai");
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
 
   const [codexSession, setCodexSession] = useState<CodexSession | null>(null);
@@ -96,6 +161,11 @@ export default function Page() {
       codexSession.state
     );
   }, [codexSession]);
+
+  const activeProviderLabel = useMemo(() => {
+    const item = providerNav.find((it) => it.id === activeModelProvider);
+    return item?.label || fallbackProviderLabel(activeModelProvider);
+  }, [providerNav, activeModelProvider]);
 
   async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -115,18 +185,42 @@ export default function Page() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
+
+    const catalogProvider = activeModelProvider === "openai" ? openAIModelProvider : activeModelProvider;
+
     try {
-      const [setting, openai, codex, models] = await Promise.all([
+      const [setting, providerList, models] = await Promise.all([
         api<ModelSetting>("/v1/modelSettings/default"),
-        api<Provider>("/v1/providers/openai"),
-        api<Provider>("/v1/providers/openai-codex"),
-        api<{ modelCatalogEntries: CatalogEntry[] }>(`/v1/modelCatalogEntries?provider=${providerFilter}`)
+        api<{ providers: ProviderSummary[] }>("/v1/providers"),
+        api<{ modelCatalogEntries: CatalogEntry[] }>(`/v1/modelCatalogEntries?provider=${encodeURIComponent(catalogProvider)}`)
       ]);
+
       setModelSetting(setting);
       setDefaultModelInput(setting.defaultModel || "");
-      setOpenaiProvider(openai);
-      setCodexProvider(codex);
+
+      const nextProviders = providerList.providers || [];
+
+      const nextProviderNav = buildModelProviderNav(nextProviders);
+      setProviderNav(nextProviderNav);
+
+      if (!nextProviderNav.some((item) => item.id === activeModelProvider)) {
+        setActiveModelProvider(nextProviderNav[0]?.id || "openai");
+      }
+
       setCatalog(models.modelCatalogEntries || []);
+
+      if (activeModelProvider === "openai") {
+        const [openai, codex] = await Promise.all([api<Provider>("/v1/providers/openai"), api<Provider>("/v1/providers/openai-codex")]);
+        setOpenaiProvider(openai);
+        setCodexProvider(codex);
+        setProviderStatus(null);
+      } else {
+        const status = await api<Provider>(`/v1/providers/${encodeURIComponent(activeModelProvider)}`);
+        setProviderStatus(status);
+        setOpenaiProvider(null);
+        setCodexProvider(null);
+      }
+
       if (!resetProviderTouched) {
         const inferred = inferProviderFromModel(setting.defaultModel || "");
         if (inferred) {
@@ -138,7 +232,7 @@ export default function Page() {
     } finally {
       setLoading(false);
     }
-  }, [providerFilter, resetProviderTouched]);
+  }, [activeModelProvider, openAIModelProvider, resetProviderTouched]);
 
   useEffect(() => {
     void refresh();
@@ -192,6 +286,7 @@ export default function Page() {
         body: JSON.stringify({ defaultModel: defaultModelInput })
       });
       setModelSetting(res);
+      await refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -288,54 +383,44 @@ export default function Page() {
     );
   }
 
-  function renderModelsWorkspace() {
+  function renderModelDefaultsSection() {
+    return (
+      <section className="panel">
+        <div className="panel-title-row">
+          <h2>Model Defaults</h2>
+          <button className="btn btn-secondary" onClick={refresh} disabled={loading}>
+            Refresh
+          </button>
+        </div>
+        <div className="form-row">
+          <input value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} placeholder="openai/gpt-5" />
+          <button className="btn" onClick={updateDefaultModel} disabled={loading || !defaultModelInput.trim()}>
+            Set Default Model
+          </button>
+        </div>
+        <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
+      </section>
+    );
+  }
+
+  function renderOpenAIWorkspace() {
     return (
       <>
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Model Defaults</h2>
-            <button className="btn btn-secondary" onClick={refresh} disabled={loading}>
-              Refresh
-            </button>
+            <h2>OpenAI Provider</h2>
+            <a href={providerDocsURL("openai")} target="_blank" rel="noreferrer">
+              Docs
+            </a>
           </div>
-          <div className="form-row">
-            <input value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} placeholder="openai/gpt-5" />
-            <button className="btn" onClick={updateDefaultModel} disabled={loading || !defaultModelInput.trim()}>
-              Set Default Model
-            </button>
-          </div>
-          <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
+          <p className="muted">OpenAI provides two auth methods in OpenClaw Console: API Key and Codex subscription.</p>
         </section>
+
+        {renderModelDefaultsSection()}
 
         <section className="panel">
           <h2>Provider Status</h2>
           <pre>{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
-        </section>
-
-        <section className="panel">
-          <h2>Auth Reset</h2>
-          <div className="form-row">
-            <select
-              value={resetProvider}
-              onChange={(e) => {
-                setResetProvider(e.target.value as ResetProvider);
-                setResetProviderTouched(true);
-              }}
-            >
-              <option value="openai">openai</option>
-              <option value="openai-codex">openai-codex</option>
-              <option value="all">all</option>
-            </select>
-            <select value={resetRestart ? "1" : "0"} onChange={(e) => setResetRestart(e.target.value === "1")}>
-              <option value="1">Restart gateway after reset</option>
-              <option value="0">Do not restart gateway</option>
-            </select>
-            <button className="btn btn-warn" onClick={applyAuthReset} disabled={loading}>
-              Reset Auth
-            </button>
-          </div>
-          <p className="muted">This creates backup files for auth store and config before writing changes.</p>
-          {resetResult && <pre>{JSON.stringify(resetResult, null, 2)}</pre>}
         </section>
 
         <section className="panel">
@@ -349,7 +434,7 @@ export default function Page() {
         </section>
 
         <section className="panel">
-          <h2>Codex Subscription OAuth</h2>
+          <h2>OpenAI Codex Subscription</h2>
           <div className="form-row compact">
             <button className="btn" onClick={startCodexSession} disabled={loading || inProgress}>
               Start Session
@@ -387,9 +472,35 @@ export default function Page() {
         </section>
 
         <section className="panel">
+          <h2>Auth Reset</h2>
+          <div className="form-row">
+            <select
+              value={resetProvider}
+              onChange={(e) => {
+                setResetProvider(e.target.value as ResetProvider);
+                setResetProviderTouched(true);
+              }}
+            >
+              <option value="openai">openai</option>
+              <option value="openai-codex">openai-codex</option>
+              <option value="all">all</option>
+            </select>
+            <select value={resetRestart ? "1" : "0"} onChange={(e) => setResetRestart(e.target.value === "1")}>
+              <option value="1">Restart gateway after reset</option>
+              <option value="0">Do not restart gateway</option>
+            </select>
+            <button className="btn btn-warn" onClick={applyAuthReset} disabled={loading}>
+              Reset Auth
+            </button>
+          </div>
+          <p className="muted">This creates backup files for auth store and config before writing changes.</p>
+          {resetResult && <pre>{JSON.stringify(resetResult, null, 2)}</pre>}
+        </section>
+
+        <section className="panel">
           <div className="panel-title-row">
             <h2>Model Catalog Entries</h2>
-            <select value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)}>
+            <select value={openAIModelProvider} onChange={(e) => setOpenAIModelProvider(e.target.value as OpenAIModelProvider)}>
               <option value="openai">openai</option>
               <option value="openai-codex">openai-codex</option>
             </select>
@@ -398,6 +509,41 @@ export default function Page() {
         </section>
       </>
     );
+  }
+
+  function renderReadOnlyProviderWorkspace() {
+    return (
+      <>
+        <section className="panel">
+          <div className="panel-title-row">
+            <h2>{activeProviderLabel} Provider</h2>
+            <a href={providerDocsURL(activeModelProvider)} target="_blank" rel="noreferrer">
+              Docs
+            </a>
+          </div>
+          <p className="muted">This provider page is read-only for now. You can view status and model catalog entries.</p>
+        </section>
+
+        {renderModelDefaultsSection()}
+
+        <section className="panel">
+          <h2>Provider Status</h2>
+          <pre>{JSON.stringify(providerStatus, null, 2)}</pre>
+        </section>
+
+        <section className="panel">
+          <h2>Model Catalog Entries</h2>
+          <pre>{JSON.stringify(catalog, null, 2)}</pre>
+        </section>
+      </>
+    );
+  }
+
+  function renderModelsWorkspace() {
+    if (activeModelProvider === "openai") {
+      return renderOpenAIWorkspace();
+    }
+    return renderReadOnlyProviderWorkspace();
   }
 
   return (
@@ -420,7 +566,7 @@ export default function Page() {
         <aside className="sidebar">
           <div className="sidebar-title">OpenClaw</div>
           <nav className="nav-list">
-            {NAV_ITEMS.map((item) => (
+            {ROOT_NAV_ITEMS.map((item) => (
               <button
                 key={item.key}
                 className={item.key === activeNav ? "nav-item nav-item-active" : "nav-item"}
@@ -430,6 +576,39 @@ export default function Page() {
                 {item.label}
               </button>
             ))}
+
+            <div className="nav-group">
+              <button
+                className={activeNav === "models" ? "nav-item nav-item-active" : "nav-item"}
+                onClick={() => {
+                  setActiveNav("models");
+                  setModelsExpanded((prev) => !prev);
+                }}
+                type="button"
+              >
+                <span>Models</span>
+                <span className="nav-caret">{modelsExpanded ? "v" : ">"}</span>
+              </button>
+
+              {modelsExpanded && (
+                <div className="subnav-list">
+                  {providerNav.map((item) => (
+                    <button
+                      key={item.id}
+                      className={activeNav === "models" && activeModelProvider === item.id ? "subnav-item subnav-item-active" : "subnav-item"}
+                      onClick={() => {
+                        setActiveNav("models");
+                        setActiveModelProvider(item.id);
+                      }}
+                      type="button"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                  {providerNav.length === 0 && <p className="muted subnav-empty">No providers detected.</p>}
+                </div>
+              )}
+            </div>
           </nav>
         </aside>
 

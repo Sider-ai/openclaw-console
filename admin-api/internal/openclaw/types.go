@@ -22,6 +22,13 @@ type ProviderResource struct {
 	OAuthProviders []string `json:"oauthProviders,omitempty"`
 }
 
+type ProviderSummaryResource struct {
+	Name        string `json:"name"`
+	ProviderID  string `json:"providerId"`
+	DisplayName string `json:"displayName"`
+	Managed     bool   `json:"managed"`
+}
+
 type ProfileResource struct {
 	Name      string `json:"name"`
 	ProfileID string `json:"profileId"`

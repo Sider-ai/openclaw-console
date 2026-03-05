@@ -37,13 +37,14 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 
 - `GET /api/v1/modelSettings/default`
 - `PATCH /api/v1/modelSettings/default?update_mask=default_model`
+- `GET /api/v1/providers`
 - `GET /api/v1/providers/{provider}`
 - `POST /api/v1/providers/openai:connectApiKey`
 - `POST /api/v1/providers/{provider}:disconnect`
 - `POST /api/v1/auth:reset`
 - `GET /api/v1/providers/{provider}/authProfiles`
 - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
-- `GET /api/v1/modelCatalogEntries?provider=openai|openai-codex&page_size=&page_token=`
+- `GET /api/v1/modelCatalogEntries?provider={provider}&page_size=&page_token=`
 - `POST /api/v1/codexAuthSessions`
 - `GET /api/v1/codexAuthSessions/{codex_auth_session}`
 - `POST /api/v1/codexAuthSessions/{codex_auth_session}:submitRedirect`
@@ -51,6 +52,8 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 
 ## Notes
 
+- `GET /api/v1/providers/{provider}` and model catalog reads support providers discovered by local OpenClaw CLI.
+- Provider mutating APIs are currently managed for `openai` and `openai-codex` flows.
 - Codex auth is implemented as a `Session` resource backed by a managed PTY process running:
   - `openclaw onboard --auth-choice openai-codex ...`
 - Session status transitions:

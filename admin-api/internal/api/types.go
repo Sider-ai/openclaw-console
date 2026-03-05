@@ -38,6 +38,10 @@ type modelCatalogListResponse struct {
 	NextPageToken       string `json:"nextPageToken,omitempty"`
 }
 
+type providerListResponse struct {
+	Providers any `json:"providers"`
+}
+
 type authProfileListResponse struct {
 	AuthProfiles any `json:"authProfiles"`
 }
