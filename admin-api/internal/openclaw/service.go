@@ -84,10 +84,11 @@ func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummaryResource,
 	out := make([]ProviderSummaryResource, 0, len(providerIDs))
 	for _, provider := range providerIDs {
 		out = append(out, ProviderSummaryResource{
-			Name:        "providers/" + provider,
-			ProviderID:  provider,
-			DisplayName: providerDisplayName(provider),
-			Managed:     isManagedProvider(provider),
+			Name:           "providers/" + provider,
+			ProviderID:     provider,
+			DisplayName:    providerDisplayName(provider),
+			SupportsAPIKey: supportsAPIKeyProvider(provider),
+			Managed:        isManagedProvider(provider),
 		})
 	}
 	return out, nil
@@ -104,10 +105,11 @@ func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderRes
 	}
 
 	resource := ProviderResource{
-		Name:       "providers/" + provider,
-		ProviderID: provider,
-		Connection: "NOT_CONFIGURED",
-		AuthType:   "NONE",
+		Name:           "providers/" + provider,
+		ProviderID:     provider,
+		SupportsAPIKey: supportsAPIKeyProvider(provider),
+		Connection:     "NOT_CONFIGURED",
+		AuthType:       "NONE",
 	}
 
 	for _, p := range status.Auth.Providers {
@@ -135,57 +137,25 @@ func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderRes
 	return resource, nil
 }
 
-func (s *Service) ConnectOpenAIAPIKey(ctx context.Context, apiKey string, defaultModel string) (ProviderResource, ModelSettingResource, error) {
+func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, apiKey string) (ProviderResource, error) {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return ProviderResource{}, fmt.Errorf("provider is required")
+	}
+	if !supportsAPIKeyProvider(provider) {
+		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
+	}
 	if strings.TrimSpace(apiKey) == "" {
-		return ProviderResource{}, ModelSettingResource{}, fmt.Errorf("apiKey is required")
+		return ProviderResource{}, fmt.Errorf("apiKey is required")
 	}
-	resolvedDefaultModel, err := s.resolveOpenAIDefaultModel(ctx, defaultModel)
+	if err := s.store.UpsertProviderAPIKey(ctx, provider, apiKey); err != nil {
+		return ProviderResource{}, err
+	}
+	providerRes, err := s.GetProvider(ctx, provider)
 	if err != nil {
-		return ProviderResource{}, ModelSettingResource{}, err
+		return ProviderResource{}, err
 	}
-	if err := s.store.UpsertOpenAIAPIKey(ctx, apiKey, resolvedDefaultModel, s.cli); err != nil {
-		return ProviderResource{}, ModelSettingResource{}, err
-	}
-	providerRes, err := s.GetProvider(ctx, "openai")
-	if err != nil {
-		return ProviderResource{}, ModelSettingResource{}, err
-	}
-	modelRes, err := s.GetModelSetting(ctx)
-	if err != nil {
-		return ProviderResource{}, ModelSettingResource{}, err
-	}
-	return providerRes, modelRes, nil
-}
-
-func (s *Service) resolveOpenAIDefaultModel(ctx context.Context, requested string) (string, error) {
-	const fallbackOpenAIModel = "openai/gpt-5"
-
-	req := strings.TrimSpace(requested)
-	if strings.HasPrefix(req, "openai/") {
-		return req, nil
-	}
-
-	status, err := s.cli.ModelsStatus(ctx)
-	if err == nil && strings.HasPrefix(strings.TrimSpace(status.DefaultModel), "openai/") {
-		return strings.TrimSpace(status.DefaultModel), nil
-	}
-
-	list, err := s.cli.ModelsList(ctx, "openai")
-	if err != nil {
-		return fallbackOpenAIModel, nil
-	}
-
-	for _, m := range list.Models {
-		if strings.HasPrefix(strings.TrimSpace(m.Key), "openai/") && m.Available {
-			return strings.TrimSpace(m.Key), nil
-		}
-	}
-	for _, m := range list.Models {
-		if strings.HasPrefix(strings.TrimSpace(m.Key), "openai/") {
-			return strings.TrimSpace(m.Key), nil
-		}
-	}
-	return fallbackOpenAIModel, nil
+	return providerRes, nil
 }
 
 func (s *Service) DisconnectProvider(ctx context.Context, provider string) (ProviderResource, error) {
@@ -272,7 +242,42 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 
 func isManagedProvider(provider string) bool {
 	switch provider {
-	case "openai", "openai-codex":
+	case "openai-codex":
+		return true
+	default:
+		return supportsAPIKeyProvider(provider)
+	}
+}
+
+func supportsAPIKeyProvider(provider string) bool {
+	// Documentation-backed allowlist for API key providers in OpenClaw.
+	switch provider {
+	case "anthropic",
+		"azure-openai-responses",
+		"cerebras",
+		"cloudflare-ai-gateway",
+		"glm",
+		"google",
+		"groq",
+		"huggingface",
+		"kilocode",
+		"kimi-coding",
+		"litellm",
+		"minimax",
+		"minimax-cn",
+		"mistral",
+		"moonshot",
+		"nvidia",
+		"openai",
+		"opencode",
+		"openrouter",
+		"qianfan",
+		"together",
+		"venice",
+		"vercel-ai-gateway",
+		"xai",
+		"xiaomi",
+		"zai":
 		return true
 	default:
 		return false

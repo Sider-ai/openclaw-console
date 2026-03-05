@@ -8,7 +8,7 @@ info:
     and provider authentication.
 
     Mutating provider flows currently supported:
-    - OpenAI API Key (`openai`)
+    - API Key providers flagged by `supportsApiKey=true`
     - OpenAI Codex OAuth subscription (`openai-codex`)
 
     Provider reads are discovered from local OpenClaw CLI.
@@ -120,26 +120,30 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  '/api/v1/providers/openai:connectApiKey':
+  '/api/v1/providers/{provider}:connectApiKey':
     post:
       tags: [Providers]
-      operationId: connectOpenaiApiKey
-      summary: Connect OpenAI provider with API key
+      operationId: connectProviderApiKey
+      summary: Connect provider with API key
+      parameters:
+        - $ref: '#/components/parameters/ProviderParam'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ConnectOpenAIAPIKeyRequest'
+              $ref: '#/components/schemas/ConnectProviderAPIKeyRequest'
       responses:
         '200':
           description: Connection updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConnectOpenAIAPIKeyResponse'
+                $ref: '#/components/schemas/Provider'
         '400':
           $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -483,13 +487,15 @@ components:
 
     Provider:
       type: object
-      required: [name, providerId, connection, authType, missingInUse]
+      required: [name, providerId, supportsApiKey, connection, authType, missingInUse]
       properties:
         name:
           type: string
           example: providers/openai
         providerId:
           type: string
+        supportsApiKey:
+          type: boolean
         connection:
           type: string
           enum: [NOT_CONFIGURED, CONNECTED]
@@ -509,7 +515,7 @@ components:
 
     ProviderSummary:
       type: object
-      required: [name, providerId, displayName, managed]
+      required: [name, providerId, displayName, supportsApiKey, managed]
       properties:
         name:
           type: string
@@ -519,6 +525,8 @@ components:
         displayName:
           type: string
           example: OpenAI
+        supportsApiKey:
+          type: boolean
         managed:
           type: boolean
 
@@ -531,26 +539,14 @@ components:
           items:
             $ref: '#/components/schemas/ProviderSummary'
 
-    ConnectOpenAIAPIKeyRequest:
+    ConnectProviderAPIKeyRequest:
       type: object
       additionalProperties: false
       required: [apiKey]
       properties:
         apiKey:
           type: string
-          description: OpenAI API key.
-        defaultModel:
-          type: string
-          description: Optional default model to set after connecting key.
-
-    ConnectOpenAIAPIKeyResponse:
-      type: object
-      required: [provider, modelSetting]
-      properties:
-        provider:
-          $ref: '#/components/schemas/Provider'
-        modelSetting:
-          $ref: '#/components/schemas/ModelSetting'
+          description: Provider API key.
 
     ResetAuthRequest:
       type: object

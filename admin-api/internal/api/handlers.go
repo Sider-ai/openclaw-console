@@ -79,21 +79,27 @@ func (h *Handler) GetProvider(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-func (h *Handler) ConnectOpenAIAPIKey(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ConnectProviderAPIKey(w http.ResponseWriter, r *http.Request) {
+	providerID := chi.URLParam(r, "provider")
 	var req connectAPIKeyRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeBadRequest(w, err.Error())
 		return
 	}
-	providerRes, modelRes, err := h.service.ConnectOpenAIAPIKey(r.Context(), req.APIKey, req.DefaultModel)
+	providerRes, err := h.service.ConnectProviderAPIKey(r.Context(), providerID, req.APIKey)
 	if err != nil {
+		if strings.Contains(err.Error(), "provider is required") || strings.Contains(err.Error(), "apiKey is required") {
+			writeBadRequest(w, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "unsupported provider") {
+			writeNotFound(w, err.Error())
+			return
+		}
 		writeInternalError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, connectAPIKeyResponse{
-		Provider:     providerRes,
-		ModelSetting: modelRes,
-	})
+	writeJSON(w, http.StatusOK, providerRes)
 }
 
 func (h *Handler) DisconnectProvider(w http.ResponseWriter, r *http.Request) {

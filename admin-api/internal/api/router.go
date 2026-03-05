@@ -28,7 +28,7 @@ func NewRouter(h *Handler) http.Handler {
 
 		r.Get("/providers", h.ListProviders)
 		r.Get("/providers/{provider}", h.GetProvider)
-		r.Post("/providers/openai:connectApiKey", h.ConnectOpenAIAPIKey)
+		r.Post("/providers/{provider}:connectApiKey", h.ConnectProviderAPIKey)
 		r.Post("/providers/{provider}:disconnect", h.DisconnectProvider)
 		r.Post("/auth:reset", h.ResetAuth)
 
