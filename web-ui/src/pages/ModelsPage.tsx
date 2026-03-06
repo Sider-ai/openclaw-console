@@ -1,31 +1,51 @@
+import { useMemo } from "react";
+
 import { formatContextWindow } from "../lib/navigation";
 import type { CatalogEntry, ModelSetting } from "../lib/types";
 
 type ModelsPageProps = {
+  defaultModelProviderInput: string;
   defaultModelInput: string;
   defaultModelUnavailable: string;
   loading: boolean;
   modelOptions: CatalogEntry[];
   modelSetting: ModelSetting | null;
   onDefaultModelChange: (value: string) => void;
+  onDefaultModelProviderChange: (value: string) => void;
   onRefresh: () => Promise<void>;
   onUpdateDefaultModel: () => Promise<void>;
   providerLabel: (providerID: string) => string;
 };
 
 export function ModelsPage({
+  defaultModelProviderInput,
   defaultModelInput,
   defaultModelUnavailable,
   loading,
   modelOptions,
   modelSetting,
   onDefaultModelChange,
+  onDefaultModelProviderChange,
   onRefresh,
   onUpdateDefaultModel,
   providerLabel
 }: ModelsPageProps) {
+  const providerOptions = useMemo(
+    () =>
+      Array.from(new Set(modelOptions.map((entry) => entry.provider))).map((providerID) => ({
+        value: providerID,
+        label: providerLabel(providerID)
+      })),
+    [modelOptions, providerLabel]
+  );
+
+  const providerModelOptions = useMemo(
+    () => modelOptions.filter((entry) => entry.provider === defaultModelProviderInput),
+    [defaultModelProviderInput, modelOptions]
+  );
+
   function modelOptionLabel(entry: CatalogEntry): string {
-    return `${providerLabel(entry.provider)} | ${entry.displayName || entry.modelKey} | ${entry.input || "-"} | ${formatContextWindow(entry.contextWindow)}`;
+    return `${entry.displayName || entry.modelKey} | ${entry.input || "-"} | ${formatContextWindow(entry.contextWindow)}`;
   }
 
   return (
@@ -43,19 +63,27 @@ export function ModelsPage({
           </button>
         </div>
         <div className="form-row">
-          <select value={defaultModelInput} onChange={(e) => onDefaultModelChange(e.target.value)} disabled={loading || modelOptions.length === 0}>
-            {modelOptions.length === 0 && <option value="">No available models</option>}
-            {modelOptions.map((entry) => (
-              <option key={`${entry.provider}:${entry.modelKey}`} value={entry.modelKey}>
+          <select value={defaultModelProviderInput} onChange={(e) => onDefaultModelProviderChange(e.target.value)} disabled={loading || providerOptions.length === 0}>
+            {providerOptions.length === 0 && <option value="">No available providers</option>}
+            {providerOptions.map((provider) => (
+              <option key={provider.value} value={provider.value}>
+                {provider.label}
+              </option>
+            ))}
+          </select>
+          <select value={defaultModelInput} onChange={(e) => onDefaultModelChange(e.target.value)} disabled={loading || providerModelOptions.length === 0}>
+            {providerModelOptions.length === 0 && <option value="">No available models</option>}
+            {providerModelOptions.map((entry) => (
+              <option key={entry.modelKey} value={entry.modelKey}>
                 {modelOptionLabel(entry)}
               </option>
             ))}
           </select>
-          <button className="btn" onClick={() => void onUpdateDefaultModel()} disabled={loading || !defaultModelInput.trim() || modelOptions.length === 0}>
+          <button className="btn" onClick={() => void onUpdateDefaultModel()} disabled={loading || !defaultModelInput.trim() || providerModelOptions.length === 0}>
             Set Default Model
           </button>
         </div>
-        <p className="muted">Only available models are listed. Format: Provider | Display Name | Input | Context Window.</p>
+        <p className="muted">Choose a provider first, then select one of its available models. Model format: Display Name | Input | Context Window.</p>
         {defaultModelUnavailable && <p className="muted">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>}
         <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
         <details>

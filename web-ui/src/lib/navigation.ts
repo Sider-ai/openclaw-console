@@ -81,3 +81,8 @@ export function formatContextWindow(windowSize: number): string {
   }
   return String(windowSize);
 }
+
+export function providerFromModelKey(modelKey: string): string {
+  const [provider = ""] = modelKey.split("/", 1);
+  return provider.trim();
+}
