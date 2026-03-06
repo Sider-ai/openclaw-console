@@ -35,6 +35,11 @@ func NewRouter(h *Handler) http.Handler {
 		r.Get("/providers/{provider}/authProfiles", h.ListAuthProfiles)
 		r.Get("/providers/{provider}/authProfiles/{auth_profile}", h.GetAuthProfile)
 
+		r.Get("/channels/telegram", h.GetTelegramChannel)
+		r.Patch("/channels/telegram", h.PatchTelegramChannel)
+		r.Post("/channels/telegram:test", h.TestTelegramChannel)
+		r.Post("/channels/telegram:disconnect", h.DisconnectTelegramChannel)
+
 		r.Get("/modelCatalogEntries", h.ListModelCatalogEntries)
 
 		r.Post("/codexAuthSessions", h.CreateCodexAuthSession)

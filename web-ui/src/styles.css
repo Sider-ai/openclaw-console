@@ -285,6 +285,29 @@ a:hover {
   margin-bottom: 8px;
 }
 
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.field-label {
+  font-weight: 700;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.checkbox-row input {
+  width: 16px;
+  height: 16px;
+}
+
 input,
 select,
 textarea,
@@ -416,6 +439,40 @@ small,
   color: #4b5563;
 }
 
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guide-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.guide-card p {
+  margin: 8px 0 0;
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.guide-list li {
+  margin-bottom: 8px;
+}
+
+.test-result {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  background: #ecfdf5;
+}
+
 pre {
   margin: 10px 0 0;
   padding: 10px;
@@ -470,6 +527,10 @@ pre {
   }
 
   .nav-list {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-grid {
     grid-template-columns: 1fr;
   }
 }

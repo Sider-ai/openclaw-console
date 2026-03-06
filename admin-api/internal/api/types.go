@@ -32,6 +32,19 @@ type submitRedirectRequest struct {
 	RedirectURL string `json:"redirectUrl"`
 }
 
+type patchTelegramChannelRequest struct {
+	Enabled        bool     `json:"enabled"`
+	BotToken       *string  `json:"botToken,omitempty"`
+	DMPolicy       string   `json:"dmPolicy"`
+	AllowFrom      []string `json:"allowFrom,omitempty"`
+	GroupPolicy    string   `json:"groupPolicy"`
+	RequireMention bool     `json:"requireMention"`
+}
+
+type testTelegramChannelRequest struct {
+	BotToken string `json:"botToken,omitempty"`
+}
+
 type modelCatalogListResponse struct {
 	ModelCatalogEntries any    `json:"modelCatalogEntries"`
 	NextPageToken       string `json:"nextPageToken,omitempty"`

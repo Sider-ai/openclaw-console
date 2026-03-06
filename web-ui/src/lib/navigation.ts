@@ -1,11 +1,14 @@
-import type { ModelProviderNav, NavKey, ProviderSummary } from "./types";
+import type { ChannelNav, ModelProviderNav, NavKey, ProviderSummary } from "./types";
 
 export const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
 
-export const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models">; label: string; path: string }[] = [
+export const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models" | "channels">; label: string; path: string }[] = [
   { key: "agents", label: "Agents", path: "/agents" },
-  { key: "channels", label: "Channels", path: "/channels" },
   { key: "tools", label: "Tools", path: "/tools" }
+];
+
+export const CHANNEL_NAV_ITEMS: ChannelNav[] = [
+  { id: "telegram", label: "Telegram" }
 ];
 
 export function fallbackProviderLabel(providerId: string): string {
@@ -53,6 +56,17 @@ export function providerDocsURL(provider: string): string {
 
 export function providerRouteFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/models\/providers\/([^/]+)\/?$/);
+  if (!match) {
+    return null;
+  }
+  return decodeURIComponent(match[1]);
+}
+
+export function channelRouteFromPath(pathname: string): string | null {
+  if (pathname === "/channels" || pathname === "/channels/") {
+    return null;
+  }
+  const match = pathname.match(/^\/channels\/([^/]+)\/?$/);
   if (!match) {
     return null;
   }

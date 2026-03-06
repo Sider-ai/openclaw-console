@@ -2,15 +2,19 @@ import type { PropsWithChildren } from "react";
 import type { NavigateFunction } from "react-router-dom";
 
 import { ROOT_NAV_ITEMS } from "../lib/navigation";
-import type { ModelProviderNav, NavKey } from "../lib/types";
+import type { ChannelNav, ModelProviderNav, NavKey } from "../lib/types";
 
 type AppShellProps = PropsWithChildren<{
   activeNav: NavKey;
   apiBase: string;
+  channelNav: ChannelNav[];
+  channelRoute: string | null;
+  channelsExpanded: boolean;
   error: string;
   loading: boolean;
   modelsExpanded: boolean;
   onNavigate: NavigateFunction;
+  onToggleChannels: () => void;
   onToggleModels: () => void;
   providerNav: ModelProviderNav[];
   providerRoute: string | null;
@@ -19,11 +23,15 @@ type AppShellProps = PropsWithChildren<{
 export function AppShell({
   activeNav,
   apiBase,
+  channelNav,
+  channelRoute,
+  channelsExpanded,
   children,
   error,
   loading,
   modelsExpanded,
   onNavigate,
+  onToggleChannels,
   onToggleModels,
   providerNav,
   providerRoute
@@ -61,6 +69,32 @@ export function AppShell({
 
             <div className="nav-group">
               <button
+                className={activeNav === "channels" ? "nav-item nav-item-active" : "nav-item"}
+                onClick={onToggleChannels}
+                type="button"
+              >
+                <span>Channels</span>
+                <span className="nav-caret">{channelsExpanded ? "v" : ">"}</span>
+              </button>
+
+              {channelsExpanded && (
+                <div className="subnav-list">
+                  {channelNav.map((item) => (
+                    <button
+                      key={item.id}
+                      className={channelRoute === item.id ? "subnav-item subnav-item-active" : "subnav-item"}
+                      onClick={() => onNavigate(`/channels/${encodeURIComponent(item.id)}`)}
+                      type="button"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="nav-group">
+              <button
                 className={activeNav === "models" ? "nav-item nav-item-active" : "nav-item"}
                 onClick={onToggleModels}
                 type="button"
@@ -71,13 +105,6 @@ export function AppShell({
 
               {modelsExpanded && (
                 <div className="subnav-list">
-                  <button
-                    className={providerRoute === null && activeNav === "models" ? "subnav-item subnav-item-active" : "subnav-item"}
-                    onClick={() => onNavigate("/models")}
-                    type="button"
-                  >
-                    Default Model
-                  </button>
                   {providerNav.map((item) => (
                     <button
                       key={item.id}

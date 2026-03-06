@@ -9,6 +9,7 @@ Canonical machine-readable spec: `openapi.yaml`
 - `modelSettings/default`
 - `providers/{provider}` where `provider` is discovered from local `openclaw models list --all`
 - `providers/{provider}/authProfiles/{auth_profile}`
+- `channels/telegram`
 - `modelCatalogEntries/{model_catalog_entry}`
 - `codexAuthSessions/{codex_auth_session}`
 
@@ -31,6 +32,13 @@ Canonical machine-readable spec: `openapi.yaml`
 
 - `GET /api/v1/providers/{provider}/authProfiles`
 - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
+
+### Channels
+
+- `GET /api/v1/channels/telegram`
+- `PATCH /api/v1/channels/telegram`
+- `POST /api/v1/channels/telegram:test`
+- `POST /api/v1/channels/telegram:disconnect`
 
 ### ModelCatalogEntries
 

@@ -1,0 +1,167 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { api } from "../lib/api";
+import type { TelegramChannel, TelegramChannelTestResult } from "../lib/types";
+
+type TelegramChannelForm = {
+  enabled: boolean;
+  botToken: string;
+  dmPolicy: string;
+  allowFromText: string;
+  groupPolicy: string;
+  requireMention: boolean;
+};
+
+function allowFromToText(values?: string[]): string {
+  return (values || []).join(", ");
+}
+
+function parseAllowFrom(text: string): string[] {
+  return text
+    .split(/[\n,]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+export function useTelegramChannel(enabled: boolean) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [channel, setChannel] = useState<TelegramChannel | null>(null);
+  const [testResult, setTestResult] = useState<TelegramChannelTestResult | null>(null);
+  const [form, setForm] = useState<TelegramChannelForm>({
+    enabled: true,
+    botToken: "",
+    dmPolicy: "pairing",
+    allowFromText: "",
+    groupPolicy: "allowlist",
+    requireMention: true
+  });
+
+  const syncForm = useCallback((nextChannel: TelegramChannel) => {
+    setForm({
+      enabled: nextChannel.enabled,
+      botToken: "",
+      dmPolicy: nextChannel.dmPolicy || "pairing",
+      allowFromText: allowFromToText(nextChannel.allowFrom),
+      groupPolicy: nextChannel.groupPolicy || "allowlist",
+      requireMention: nextChannel.requireMention
+    });
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api<TelegramChannel>("/v1/channels/telegram");
+      setChannel(res);
+      syncForm(res);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [syncForm]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    void refresh();
+  }, [enabled, refresh]);
+
+  const isDirty = useMemo(() => {
+    if (!channel) {
+      return false;
+    }
+    return (
+      channel.enabled !== form.enabled ||
+      channel.dmPolicy !== form.dmPolicy ||
+      (channel.groupPolicy || "allowlist") !== form.groupPolicy ||
+      channel.requireMention !== form.requireMention ||
+      allowFromToText(channel.allowFrom) !== form.allowFromText.trim()
+    );
+  }, [channel, form]);
+
+  async function save() {
+    setLoading(true);
+    setError("");
+    try {
+      const payload: Record<string, unknown> = {
+        enabled: form.enabled,
+        dmPolicy: form.dmPolicy,
+        allowFrom: parseAllowFrom(form.allowFromText),
+        groupPolicy: form.groupPolicy,
+        requireMention: form.requireMention
+      };
+      if (form.botToken.trim()) {
+        payload.botToken = form.botToken.trim();
+      }
+      const res = await api<TelegramChannel>("/v1/channels/telegram", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      });
+      setChannel(res);
+      setTestResult(null);
+      syncForm(res);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function testConnection() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api<TelegramChannelTestResult>("/v1/channels/telegram:test", {
+        method: "POST",
+        body: JSON.stringify({
+          botToken: form.botToken.trim() || undefined
+        })
+      });
+      setTestResult(res);
+    } catch (e) {
+      setError((e as Error).message);
+      setTestResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function disconnect() {
+    const confirmed = window.confirm("Remove the Telegram bot configuration from OpenClaw?");
+    if (!confirmed) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api<TelegramChannel>("/v1/channels/telegram:disconnect", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      setChannel(res);
+      setTestResult(null);
+      syncForm(res);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return {
+    channel,
+    error,
+    form,
+    isDirty,
+    loading,
+    refresh,
+    setForm,
+    testConnection,
+    testResult,
+    disconnect,
+    save
+  };
+}

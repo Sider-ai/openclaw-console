@@ -25,6 +25,11 @@ export type ModelProviderNav = {
   label: string;
 };
 
+export type ChannelNav = {
+  id: string;
+  label: string;
+};
+
 export type CatalogEntry = {
   name: string;
   modelKey: string;
@@ -44,6 +49,32 @@ export type CodexSession = {
   expiresAt: number;
   errorCode?: string;
   errorMessage?: string;
+};
+
+export type TelegramChannel = {
+  name: string;
+  channelId: string;
+  displayName: string;
+  enabled: boolean;
+  configured: boolean;
+  mode: string;
+  botTokenConfigured: boolean;
+  dmPolicy: string;
+  allowFrom?: string[];
+  groupPolicy: string;
+  requireMention: boolean;
+  webhookUrlConfigured: boolean;
+  lastAppliedAction?: string;
+};
+
+export type TelegramChannelTestResult = {
+  name: string;
+  channelId: string;
+  ok: boolean;
+  message: string;
+  botId?: number;
+  botUsername?: string;
+  botFirstName?: string;
 };
 
 export type NavKey = "agents" | "channels" | "tools" | "models";

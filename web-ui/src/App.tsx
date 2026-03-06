@@ -3,24 +3,36 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 
 import { AppShell } from "./components/AppShell";
 import { useConsoleData } from "./hooks/useConsoleData";
-import { navFromPath, providerRouteFromPath } from "./lib/navigation";
+import { useTelegramChannel } from "./hooks/useTelegramChannel";
+import { CHANNEL_NAV_ITEMS, channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
+import { ChannelsPage } from "./pages/ChannelsPage";
 import { ModelsPage } from "./pages/ModelsPage";
 import { OpenAIProviderPage } from "./pages/OpenAIProviderPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProviderPage } from "./pages/ProviderPage";
+import { TelegramChannelPage } from "./pages/TelegramChannelPage";
+import { useState } from "react";
 
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const providerRoute = providerRouteFromPath(location.pathname);
+  const channelRoute = channelRouteFromPath(location.pathname);
   const activeNav = navFromPath(location.pathname);
 
   const consoleData = useConsoleData(providerRoute);
+  const telegramChannel = useTelegramChannel(activeNav === "channels");
   const { setModelsExpanded } = consoleData;
+  const [channelsExpanded, setChannelsExpanded] = useState(activeNav === "channels");
+  const shellError = activeNav === "channels" ? telegramChannel.error : consoleData.error;
+  const shellLoading = activeNav === "channels" ? telegramChannel.loading : consoleData.loading;
 
   useEffect(() => {
     if (activeNav === "models") {
       setModelsExpanded(true);
+    }
+    if (activeNav === "channels") {
+      setChannelsExpanded(true);
     }
   }, [activeNav, setModelsExpanded]);
 
@@ -28,12 +40,33 @@ export default function App() {
     <AppShell
       activeNav={activeNav}
       apiBase={consoleData.apiBase}
-      error={consoleData.error}
-      loading={consoleData.loading}
+      channelNav={CHANNEL_NAV_ITEMS}
+      channelRoute={channelRoute}
+      channelsExpanded={channelsExpanded}
+      error={shellError}
+      loading={shellLoading}
       modelsExpanded={consoleData.modelsExpanded}
       onNavigate={navigate}
+      onToggleChannels={() => {
+        if (activeNav === "channels") {
+          if (channelRoute !== null) {
+            navigate("/channels");
+            setChannelsExpanded(true);
+            return;
+          }
+          setChannelsExpanded((prev) => !prev);
+          return;
+        }
+        navigate("/channels");
+        setChannelsExpanded(true);
+      }}
       onToggleModels={() => {
         if (activeNav === "models") {
+          if (providerRoute !== null) {
+            navigate("/models");
+            consoleData.setModelsExpanded(true);
+            return;
+          }
           consoleData.setModelsExpanded((prev) => !prev);
           return;
         }
@@ -123,7 +156,24 @@ export default function App() {
         />
         <Route
           path="/channels"
-          element={<PlaceholderPage description="Channel resources (Telegram, Slack, etc.) will be configured here." title="Channels" />}
+          element={<ChannelsPage onOpenTelegram={() => navigate("/channels/telegram")} />}
+        />
+        <Route
+          path="/channels/telegram"
+          element={
+            <TelegramChannelPage
+              channel={telegramChannel.channel}
+              form={telegramChannel.form}
+              isDirty={telegramChannel.isDirty}
+              loading={telegramChannel.loading}
+              onDisconnect={telegramChannel.disconnect}
+              onFormChange={telegramChannel.setForm}
+              onRefresh={telegramChannel.refresh}
+              onSave={telegramChannel.save}
+              onTestConnection={telegramChannel.testConnection}
+              testResult={telegramChannel.testResult}
+            />
+          }
         />
         <Route
           path="/tools"

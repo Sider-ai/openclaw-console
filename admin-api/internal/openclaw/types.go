@@ -78,6 +78,52 @@ type AuthResetResult struct {
 	RestartError          string   `json:"restartError,omitempty"`
 }
 
+type TelegramChannelResource struct {
+	Name                 string   `json:"name"`
+	ChannelID            string   `json:"channelId"`
+	DisplayName          string   `json:"displayName"`
+	Enabled              bool     `json:"enabled"`
+	Configured           bool     `json:"configured"`
+	Mode                 string   `json:"mode"`
+	BotTokenConfigured   bool     `json:"botTokenConfigured"`
+	DMPolicy             string   `json:"dmPolicy"`
+	AllowFrom            []string `json:"allowFrom,omitempty"`
+	GroupPolicy          string   `json:"groupPolicy"`
+	RequireMention       bool     `json:"requireMention"`
+	WebhookURLConfigured bool     `json:"webhookUrlConfigured"`
+	LastAppliedAction    string   `json:"lastAppliedAction,omitempty"`
+}
+
+type TelegramChannelConfig struct {
+	Enabled        bool
+	BotToken       string
+	TokenFile      string
+	DMPolicy       string
+	AllowFrom      []string
+	GroupPolicy    string
+	RequireMention bool
+	WebhookURL     string
+}
+
+type TelegramChannelUpdate struct {
+	Enabled        bool
+	BotToken       *string
+	DMPolicy       string
+	AllowFrom      []string
+	GroupPolicy    string
+	RequireMention bool
+}
+
+type TelegramChannelTestResult struct {
+	Name         string `json:"name"`
+	ChannelID    string `json:"channelId"`
+	OK           bool   `json:"ok"`
+	Message      string `json:"message"`
+	BotID        int64  `json:"botId,omitempty"`
+	BotUsername  string `json:"botUsername,omitempty"`
+	BotFirstName string `json:"botFirstName,omitempty"`
+}
+
 func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }

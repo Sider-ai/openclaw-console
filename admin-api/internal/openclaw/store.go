@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -118,6 +119,65 @@ func (s *Store) DisconnectProvider(ctx context.Context, provider string) error {
 		return err
 	}
 
+	return maybeRestartOpenClaw()
+}
+
+func (s *Store) GetTelegramChannelConfig() (TelegramChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return TelegramChannelConfig{}, err
+	}
+	return readTelegramChannelConfig(cfg), nil
+}
+
+func (s *Store) UpdateTelegramChannel(_ context.Context, update TelegramChannelUpdate) (TelegramChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return TelegramChannelConfig{}, err
+	}
+
+	current := readTelegramChannelConfig(cfg)
+	if update.BotToken != nil {
+		current.BotToken = strings.TrimSpace(*update.BotToken)
+		if current.BotToken != "" {
+			current.TokenFile = ""
+		}
+	}
+
+	current.Enabled = update.Enabled
+	current.DMPolicy = strings.TrimSpace(update.DMPolicy)
+	current.AllowFrom = append([]string(nil), update.AllowFrom...)
+	current.GroupPolicy = strings.TrimSpace(update.GroupPolicy)
+	current.RequireMention = update.RequireMention
+
+	setNestedMapValue(cfg, []string{"channels", "telegram"}, telegramChannelConfigMap(current))
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return TelegramChannelConfig{}, err
+	}
+	return current, maybeRestartOpenClaw()
+}
+
+func (s *Store) DisconnectTelegramChannel(_ context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return err
+	}
+
+	channels := getNestedMap(cfg, []string{"channels"})
+	delete(channels, "telegram")
+	setNestedMapValue(cfg, []string{"channels"}, channels)
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return err
+	}
 	return maybeRestartOpenClaw()
 }
 
@@ -393,6 +453,60 @@ func getNestedMap(root map[string]any, path []string) map[string]any {
 	return cur
 }
 
+func readTelegramChannelConfig(root map[string]any) TelegramChannelConfig {
+	rawChannels, ok := root["channels"].(map[string]any)
+	if !ok {
+		return TelegramChannelConfig{
+			DMPolicy:       "pairing",
+			GroupPolicy:    "allowlist",
+			RequireMention: true,
+		}
+	}
+	rawTelegram, ok := rawChannels["telegram"].(map[string]any)
+	if !ok {
+		return TelegramChannelConfig{
+			DMPolicy:       "pairing",
+			GroupPolicy:    "allowlist",
+			RequireMention: true,
+		}
+	}
+
+	cfg := TelegramChannelConfig{
+		Enabled:        readBool(rawTelegram, "enabled"),
+		BotToken:       readString(rawTelegram, "botToken"),
+		TokenFile:      readString(rawTelegram, "tokenFile"),
+		DMPolicy:       defaultString(readString(rawTelegram, "dmPolicy"), "pairing"),
+		AllowFrom:      readStringList(rawTelegram, "allowFrom"),
+		GroupPolicy:    defaultString(readString(rawTelegram, "groupPolicy"), "allowlist"),
+		RequireMention: readTelegramRequireMention(rawTelegram),
+		WebhookURL:     readString(rawTelegram, "webhookUrl"),
+	}
+	return cfg
+}
+
+func telegramChannelConfigMap(cfg TelegramChannelConfig) map[string]any {
+	out := map[string]any{
+		"enabled":     cfg.Enabled,
+		"dmPolicy":    defaultString(cfg.DMPolicy, "pairing"),
+		"groupPolicy": defaultString(cfg.GroupPolicy, "allowlist"),
+		"streaming":   "partial",
+		"groups":      map[string]any{"*": map[string]any{"requireMention": cfg.RequireMention}},
+	}
+	if len(cfg.AllowFrom) > 0 {
+		out["allowFrom"] = stringIDsToJSONNumbers(cfg.AllowFrom)
+	}
+	if token := strings.TrimSpace(cfg.BotToken); token != "" {
+		out["botToken"] = token
+	}
+	if tokenFile := strings.TrimSpace(cfg.TokenFile); tokenFile != "" {
+		out["tokenFile"] = tokenFile
+	}
+	if webhookURL := strings.TrimSpace(cfg.WebhookURL); webhookURL != "" {
+		out["webhookUrl"] = webhookURL
+	}
+	return out
+}
+
 func setNestedMapValue(root map[string]any, path []string, value any) {
 	if len(path) == 0 {
 		return
@@ -403,6 +517,90 @@ func setNestedMapValue(root map[string]any, path []string, value any) {
 	}
 	parent := getNestedMap(root, path[:len(path)-1])
 	parent[path[len(path)-1]] = value
+}
+
+func readString(root map[string]any, key string) string {
+	value, _ := root[key].(string)
+	return strings.TrimSpace(value)
+}
+
+func readBool(root map[string]any, key string) bool {
+	value, _ := root[key].(bool)
+	return value
+}
+
+func readStringList(root map[string]any, key string) []string {
+	raw, ok := root[key]
+	if !ok {
+		return nil
+	}
+	switch value := raw.(type) {
+	case []any:
+		out := make([]string, 0, len(value))
+		for _, item := range value {
+			switch typed := item.(type) {
+			case string:
+				if trimmed := strings.TrimSpace(typed); trimmed != "" {
+					out = append(out, trimmed)
+				}
+			case json.Number:
+				if trimmed := strings.TrimSpace(typed.String()); trimmed != "" {
+					out = append(out, trimmed)
+				}
+			case float64:
+				out = append(out, strconv.FormatInt(int64(typed), 10))
+			}
+		}
+		return out
+	case string:
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return []string{trimmed}
+		}
+	}
+	return nil
+}
+
+func readTelegramRequireMention(root map[string]any) bool {
+	rawGroups, ok := root["groups"].(map[string]any)
+	if !ok {
+		return true
+	}
+	rawDefault, ok := rawGroups["*"].(map[string]any)
+	if !ok {
+		return true
+	}
+	value, ok := rawDefault["requireMention"].(bool)
+	if !ok {
+		return true
+	}
+	return value
+}
+
+func stringIDsToJSONNumbers(values []string) []any {
+	out := make([]any, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "*" {
+			out = append(out, trimmed)
+			continue
+		}
+		if _, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+			out = append(out, json.Number(trimmed))
+			continue
+		}
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func defaultString(value string, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return strings.TrimSpace(value)
 }
 
 func profileStatus(cred AuthCredential) string {

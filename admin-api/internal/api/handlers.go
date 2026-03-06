@@ -173,6 +173,69 @@ func (h *Handler) GetAuthProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, item)
 }
 
+func (h *Handler) GetTelegramChannel(w http.ResponseWriter, r *http.Request) {
+	res, err := h.service.GetTelegramChannel()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) PatchTelegramChannel(w http.ResponseWriter, r *http.Request) {
+	var req patchTelegramChannelRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	res, err := h.service.UpdateTelegramChannel(r.Context(), openclaw.TelegramChannelUpdate{
+		Enabled:        req.Enabled,
+		BotToken:       req.BotToken,
+		DMPolicy:       strings.TrimSpace(req.DMPolicy),
+		AllowFrom:      req.AllowFrom,
+		GroupPolicy:    strings.TrimSpace(req.GroupPolicy),
+		RequireMention: req.RequireMention,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "dmPolicy") || strings.Contains(err.Error(), "groupPolicy") || strings.Contains(err.Error(), "allowFrom") {
+			writeBadRequest(w, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) TestTelegramChannel(w http.ResponseWriter, r *http.Request) {
+	var req testTelegramChannelRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	res, err := h.service.TestTelegramChannel(ctx, req.BotToken)
+	if err != nil {
+		if strings.Contains(err.Error(), "botToken is required") || strings.Contains(err.Error(), "telegram token rejected") {
+			writeBadRequest(w, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) DisconnectTelegramChannel(w http.ResponseWriter, r *http.Request) {
+	res, err := h.service.DisconnectTelegramChannel(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request) {
 	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
 	if provider == "" {

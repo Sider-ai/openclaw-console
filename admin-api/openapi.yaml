@@ -21,6 +21,7 @@ tags:
   - name: Health
   - name: ModelSettings
   - name: Providers
+  - name: Channels
   - name: AuthProfiles
   - name: ModelCatalogEntries
   - name: CodexAuthSessions
@@ -228,6 +229,88 @@ paths:
                 $ref: '#/components/schemas/AuthProfile'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/channels/telegram:
+    get:
+      tags: [Channels]
+      operationId: getTelegramChannel
+      summary: Get Telegram channel configuration state
+      responses:
+        '200':
+          description: Telegram channel resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramChannel'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [Channels]
+      operationId: patchTelegramChannel
+      summary: Create or update Telegram channel configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTelegramChannelRequest'
+      responses:
+        '200':
+          description: Updated Telegram channel resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramChannel'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/api/v1/channels/telegram:test':
+    post:
+      tags: [Channels]
+      operationId: testTelegramChannel
+      summary: Validate a Telegram bot token with the Telegram Bot API
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestTelegramChannelRequest'
+      responses:
+        '200':
+          description: Telegram bot token test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramChannelTestResult'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/api/v1/channels/telegram:disconnect':
+    post:
+      tags: [Channels]
+      operationId: disconnectTelegramChannel
+      summary: Remove Telegram channel configuration
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Telegram channel resource after disconnect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramChannel'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -490,6 +573,37 @@ components:
         defaultModel:
           type: string
 
+    PatchTelegramChannelRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled, dmPolicy, groupPolicy, requireMention]
+      properties:
+        enabled:
+          type: boolean
+        botToken:
+          type: string
+          description: Optional replacement bot token. Omit to keep the existing saved token.
+        dmPolicy:
+          type: string
+          enum: [pairing, allowlist, open, disabled]
+        allowFrom:
+          type: array
+          items:
+            type: string
+        groupPolicy:
+          type: string
+          enum: [allowlist, open, disabled]
+        requireMention:
+          type: boolean
+
+    TestTelegramChannelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        botToken:
+          type: string
+          description: Optional unsaved bot token to validate. If omitted, the saved token is used.
+
     Provider:
       type: object
       required: [name, providerId, supportsApiKey, connection, authType, missingInUse]
@@ -517,6 +631,67 @@ components:
           type: array
           items:
             type: string
+
+    TelegramChannel:
+      type: object
+      required: [name, channelId, displayName, enabled, configured, mode, botTokenConfigured, dmPolicy, groupPolicy, requireMention, webhookUrlConfigured]
+      properties:
+        name:
+          type: string
+          example: channels/telegram
+        channelId:
+          type: string
+          example: telegram
+        displayName:
+          type: string
+          example: Telegram
+        enabled:
+          type: boolean
+        configured:
+          type: boolean
+        mode:
+          type: string
+          enum: [polling, webhook]
+        botTokenConfigured:
+          type: boolean
+        dmPolicy:
+          type: string
+          enum: [pairing, allowlist, open, disabled]
+        allowFrom:
+          type: array
+          items:
+            type: string
+        groupPolicy:
+          type: string
+          enum: [allowlist, open, disabled]
+        requireMention:
+          type: boolean
+        webhookUrlConfigured:
+          type: boolean
+        lastAppliedAction:
+          type: string
+
+    TelegramChannelTestResult:
+      type: object
+      required: [name, channelId, ok, message]
+      properties:
+        name:
+          type: string
+          example: channels/telegram:test
+        channelId:
+          type: string
+          example: telegram
+        ok:
+          type: boolean
+        message:
+          type: string
+        botId:
+          type: integer
+          format: int64
+        botUsername:
+          type: string
+        botFirstName:
+          type: string
 
     ProviderSummary:
       type: object
