@@ -3,7 +3,6 @@ package openclaw
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/rs/zerolog/log"
 )
 
 type serviceSnapshot struct {
@@ -48,7 +48,7 @@ func (c *serviceCache) Start(ctx context.Context) {
 	c.startOnce.Do(func() {
 		go c.refreshLoop(ctx)
 		if err := c.startFileWatcher(ctx, c.cli.paths.ConfigPath, c.cli.paths.AuthStorePath); err != nil {
-			log.Printf("openclaw cache file watcher disabled: %v", err)
+			log.Warn().Err(err).Msg("openclaw cache file watcher disabled")
 		}
 		c.TriggerRefresh("startup")
 	})
@@ -87,7 +87,7 @@ func (c *serviceCache) refreshLoop(ctx context.Context) {
 		case <-c.refreshCh:
 			refreshCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 			if err := c.refresh(refreshCtx); err != nil {
-				log.Printf("openclaw cache refresh failed: %v", err)
+				log.Warn().Err(err).Msg("openclaw cache refresh failed")
 			}
 			cancel()
 		}
@@ -171,7 +171,7 @@ func (c *serviceCache) startFileWatcher(ctx context.Context, paths ...string) er
 				if !ok {
 					return
 				}
-				log.Printf("openclaw cache watcher error: %v", err)
+				log.Warn().Err(err).Msg("openclaw cache watcher error")
 			}
 		}
 	}()

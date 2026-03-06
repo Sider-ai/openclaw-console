@@ -3,19 +3,24 @@ package main
 import (
 	"cmp"
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/Sider-ai/sider-openclaw-console/server/internal/api"
 	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 )
 
 func main() {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		With().Timestamp().Logger()
+
 	paths, err := openclaw.ResolvePaths()
 	if err != nil {
-		log.Fatalf("resolve paths: %v", err)
+		log.Fatal().Err(err).Msg("resolve paths")
 	}
 
 	store := openclaw.NewStore(paths)
@@ -23,7 +28,7 @@ func main() {
 	service := openclaw.NewService(cli, store)
 	warmupCtx, warmupCancel := context.WithTimeout(context.Background(), 45*time.Second)
 	if err := service.Warmup(warmupCtx); err != nil {
-		log.Printf("openclaw metadata warmup failed: %v", err)
+		log.Warn().Err(err).Msg("openclaw metadata warmup failed")
 	}
 	warmupCancel()
 	service.StartBackground(context.Background())
@@ -33,7 +38,7 @@ func main() {
 	authUsername := os.Getenv("OPENCLAW_CONSOLE_AUTH_USER")
 	authPassword := os.Getenv("OPENCLAW_CONSOLE_AUTH_PASSWORD")
 	if (authUsername == "") != (authPassword == "") {
-		log.Printf("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
+		log.Warn().Msg("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
 		authUsername = ""
 		authPassword = ""
 	}
@@ -54,8 +59,8 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("openclaw console api listening on %s", addr)
+	log.Info().Str("addr", addr).Msg("openclaw console api listening")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %v", err)
+		log.Fatal().Err(err).Msg("listen")
 	}
 }

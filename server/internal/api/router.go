@@ -2,13 +2,15 @@ package api
 
 import (
 	"crypto/subtle"
-	"log"
 	"net/http"
 	"time"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/ui"
+	"github.com/rs/zerolog/log"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/ui"
 )
 
 type RouterConfig struct {
@@ -100,7 +102,7 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf("%s %s (%s)", r.Method, r.URL.Path, time.Since(start).Round(time.Millisecond))
+		log.Info().Str("method", r.Method).Str("path", r.URL.Path).Dur("duration", time.Since(start).Round(time.Millisecond)).Send()
 	})
 }
 
