@@ -181,6 +181,64 @@ func (s *Store) DisconnectTelegramChannel(_ context.Context) error {
 	return maybeRestartOpenClaw()
 }
 
+func (s *Store) GetQQBotChannelConfig() (QQBotChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return QQBotChannelConfig{}, err
+	}
+	return readQQBotChannelConfig(cfg), nil
+}
+
+func (s *Store) UpdateQQBotChannel(_ context.Context, update QQBotChannelUpdate) (QQBotChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return QQBotChannelConfig{}, err
+	}
+
+	current := readQQBotChannelConfig(cfg)
+	current.Enabled = update.Enabled
+	current.AppID = strings.TrimSpace(update.AppID)
+	current.AllowFrom = append([]string(nil), update.AllowFrom...)
+	current.MarkdownSupport = update.MarkdownSupport
+	current.ImageServerBaseURL = strings.TrimSpace(update.ImageServerBaseURL)
+	if update.ClientSecret != nil {
+		current.ClientSecret = strings.TrimSpace(*update.ClientSecret)
+		if current.ClientSecret != "" {
+			current.ClientSecretFile = ""
+		}
+	}
+
+	setNestedMapValue(cfg, []string{"channels", "qqbot"}, qqbotChannelConfigMap(current))
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return QQBotChannelConfig{}, err
+	}
+	return current, maybeRestartOpenClaw()
+}
+
+func (s *Store) DisconnectQQBotChannel(_ context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return err
+	}
+
+	channels := getNestedMap(cfg, []string{"channels"})
+	delete(channels, "qqbot")
+	setNestedMapValue(cfg, []string{"channels"}, channels)
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return err
+	}
+	return maybeRestartOpenClaw()
+}
+
 func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli *CLI) (AuthResetResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -484,6 +542,33 @@ func readTelegramChannelConfig(root map[string]any) TelegramChannelConfig {
 	return cfg
 }
 
+func readQQBotChannelConfig(root map[string]any) QQBotChannelConfig {
+	rawChannels, ok := root["channels"].(map[string]any)
+	if !ok {
+		return QQBotChannelConfig{
+			AllowFrom:       []string{"*"},
+			MarkdownSupport: true,
+		}
+	}
+	rawQQBot, ok := rawChannels["qqbot"].(map[string]any)
+	if !ok {
+		return QQBotChannelConfig{
+			AllowFrom:       []string{"*"},
+			MarkdownSupport: true,
+		}
+	}
+
+	return QQBotChannelConfig{
+		Enabled:            readBool(rawQQBot, "enabled"),
+		AppID:              readString(rawQQBot, "appId"),
+		ClientSecret:       readString(rawQQBot, "clientSecret"),
+		ClientSecretFile:   readString(rawQQBot, "clientSecretFile"),
+		AllowFrom:          defaultStringList(readStringList(rawQQBot, "allowFrom"), []string{"*"}),
+		MarkdownSupport:    readDefaultBool(rawQQBot, "markdownSupport", true),
+		ImageServerBaseURL: readString(rawQQBot, "imageServerBaseUrl"),
+	}
+}
+
 func telegramChannelConfigMap(cfg TelegramChannelConfig) map[string]any {
 	out := map[string]any{
 		"enabled":     cfg.Enabled,
@@ -503,6 +588,27 @@ func telegramChannelConfigMap(cfg TelegramChannelConfig) map[string]any {
 	}
 	if webhookURL := strings.TrimSpace(cfg.WebhookURL); webhookURL != "" {
 		out["webhookUrl"] = webhookURL
+	}
+	return out
+}
+
+func qqbotChannelConfigMap(cfg QQBotChannelConfig) map[string]any {
+	out := map[string]any{
+		"enabled":         cfg.Enabled,
+		"allowFrom":       append([]string(nil), cfg.AllowFrom...),
+		"markdownSupport": cfg.MarkdownSupport,
+	}
+	if appID := strings.TrimSpace(cfg.AppID); appID != "" {
+		out["appId"] = appID
+	}
+	if clientSecret := strings.TrimSpace(cfg.ClientSecret); clientSecret != "" {
+		out["clientSecret"] = clientSecret
+	}
+	if clientSecretFile := strings.TrimSpace(cfg.ClientSecretFile); clientSecretFile != "" {
+		out["clientSecretFile"] = clientSecretFile
+	}
+	if imageServerBaseURL := strings.TrimSpace(cfg.ImageServerBaseURL); imageServerBaseURL != "" {
+		out["imageServerBaseUrl"] = imageServerBaseURL
 	}
 	return out
 }
@@ -558,6 +664,25 @@ func readStringList(root map[string]any, key string) []string {
 		}
 	}
 	return nil
+}
+
+func defaultStringList(values []string, fallback []string) []string {
+	if len(values) == 0 {
+		return append([]string(nil), fallback...)
+	}
+	return append([]string(nil), values...)
+}
+
+func readDefaultBool(root map[string]any, key string, fallback bool) bool {
+	value, ok := root[key]
+	if !ok {
+		return fallback
+	}
+	b, ok := value.(bool)
+	if !ok {
+		return fallback
+	}
+	return b
 }
 
 func readTelegramRequireMention(root map[string]any) bool {

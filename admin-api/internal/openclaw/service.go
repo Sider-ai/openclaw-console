@@ -10,10 +10,118 @@ import (
 	"time"
 )
 
+const qqBotPluginSpec = "@sliverp/qqbot@1.5.2"
+
 type Service struct {
 	cli   *CLI
 	store *Store
 	cache *serviceCache
+}
+
+func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, error) {
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return nil, err
+	}
+	qqbotPlugin := pluginByID(plugins, "qqbot")
+
+	telegramCfg, err := s.store.GetTelegramChannelConfig()
+	if err != nil {
+		return nil, err
+	}
+	qqbotCfg, err := s.store.GetQQBotChannelConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	out := []ChannelSummaryResource{
+		{
+			Name:            "channels/telegram",
+			ChannelID:       "telegram",
+			DisplayName:     "Telegram",
+			Enabled:         telegramCfg.Enabled,
+			Configured:      strings.TrimSpace(telegramCfg.BotToken) != "" || strings.TrimSpace(telegramCfg.TokenFile) != "",
+			PluginInstalled: true,
+			Installable:     false,
+		},
+		{
+			Name:            "channels/qqbot",
+			ChannelID:       "qqbot",
+			DisplayName:     "QQ Bot",
+			Enabled:         qqbotCfg.Enabled,
+			Configured:      strings.TrimSpace(qqbotCfg.AppID) != "" && (strings.TrimSpace(qqbotCfg.ClientSecret) != "" || strings.TrimSpace(qqbotCfg.ClientSecretFile) != ""),
+			PluginInstalled: qqbotPlugin.Installed,
+			Installable:     true,
+		},
+	}
+	return out, nil
+}
+
+func (s *Service) ListPlugins(ctx context.Context) ([]PluginResource, error) {
+	return s.listPlugins(ctx)
+}
+
+func (s *Service) GetQQBotChannel(ctx context.Context) (QQBotChannelResource, error) {
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return QQBotChannelResource{}, err
+	}
+	plugin := pluginByID(plugins, "qqbot")
+	cfg, err := s.store.GetQQBotChannelConfig()
+	if err != nil {
+		return QQBotChannelResource{}, err
+	}
+	return buildQQBotChannelResource(cfg, plugin, ""), nil
+}
+
+func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, error) {
+	output, err := s.cli.InstallPlugin(ctx, qqBotPluginSpec)
+	if err != nil {
+		return PluginInstallResult{}, err
+	}
+	restarted, restartErr := restartOpenClaw()
+	if restartErr != nil {
+		return PluginInstallResult{}, restartErr
+	}
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return PluginInstallResult{}, err
+	}
+	plugin := pluginByID(plugins, "qqbot")
+	return PluginInstallResult{
+		Name:      "plugins/qqbot:install",
+		PluginID:  "qqbot",
+		Spec:      qqBotPluginSpec,
+		Installed: plugin.Installed,
+		Restarted: restarted,
+		Output:    strings.TrimSpace(output),
+		Plugin:    plugin,
+	}, nil
+}
+
+func (s *Service) UpdateQQBotChannel(ctx context.Context, update QQBotChannelUpdate) (QQBotChannelResource, error) {
+	update.AppID = strings.TrimSpace(update.AppID)
+	update.AllowFrom = normalizeStringList(update.AllowFrom)
+	update.ImageServerBaseURL = strings.TrimSpace(update.ImageServerBaseURL)
+	if update.AppID == "" {
+		return QQBotChannelResource{}, fmt.Errorf("appId is required")
+	}
+	cfg, err := s.store.UpdateQQBotChannel(ctx, update)
+	if err != nil {
+		return QQBotChannelResource{}, err
+	}
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return QQBotChannelResource{}, err
+	}
+	return buildQQBotChannelResource(cfg, pluginByID(plugins, "qqbot"), "saved"), nil
+}
+
+func (s *Service) DisconnectQQBotChannel(ctx context.Context) (QQBotChannelResource, error) {
+	if err := s.store.DisconnectQQBotChannel(ctx); err != nil {
+		return QQBotChannelResource{}, err
+	}
+	return s.GetQQBotChannel(ctx)
 }
 
 func NewService(cli *CLI, store *Store) *Service {
@@ -235,6 +343,28 @@ func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) 
 	return result, nil
 }
 
+func (s *Service) listPlugins(ctx context.Context) ([]PluginResource, error) {
+	list, err := s.cli.PluginsList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PluginResource, 0, len(list.Plugins))
+	for _, item := range list.Plugins {
+		out = append(out, PluginResource{
+			ID:         item.ID,
+			Name:       item.Name,
+			Version:    item.Version,
+			Installed:  true,
+			Enabled:    item.Enabled,
+			Status:     item.Status,
+			Origin:     item.Origin,
+			Source:     item.Source,
+			ChannelIDs: append([]string(nil), item.ChannelIDs...),
+		})
+	}
+	return out, nil
+}
+
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
 	if provider != "" && !isManagedProvider(provider) {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
@@ -332,6 +462,27 @@ func buildTelegramChannelResource(cfg TelegramChannelConfig, action string) Tele
 	}
 }
 
+func buildQQBotChannelResource(cfg QQBotChannelConfig, plugin PluginResource, action string) QQBotChannelResource {
+	return QQBotChannelResource{
+		Name:                   "channels/qqbot",
+		ChannelID:              "qqbot",
+		DisplayName:            "QQ Bot",
+		PluginInstalled:        plugin.Installed,
+		PluginVersion:          plugin.Version,
+		PluginStatus:           plugin.Status,
+		PluginSpec:             qqBotPluginSpec,
+		Enabled:                cfg.Enabled,
+		Configured:             strings.TrimSpace(cfg.AppID) != "" && (strings.TrimSpace(cfg.ClientSecret) != "" || strings.TrimSpace(cfg.ClientSecretFile) != ""),
+		AppID:                  cfg.AppID,
+		AppIDConfigured:        strings.TrimSpace(cfg.AppID) != "",
+		ClientSecretConfigured: strings.TrimSpace(cfg.ClientSecret) != "" || strings.TrimSpace(cfg.ClientSecretFile) != "",
+		AllowFrom:              append([]string(nil), cfg.AllowFrom...),
+		MarkdownSupport:        cfg.MarkdownSupport,
+		ImageServerBaseURL:     cfg.ImageServerBaseURL,
+		LastAppliedAction:      action,
+	}
+}
+
 func telegramMode(cfg TelegramChannelConfig) string {
 	if strings.TrimSpace(cfg.WebhookURL) != "" {
 		return "webhook"
@@ -383,6 +534,32 @@ func normalizeTelegramAllowFrom(values []string, dmPolicy string) ([]string, err
 		return nil, fmt.Errorf(`dmPolicy "allowlist" requires at least one Telegram user ID in allowFrom`)
 	}
 	return out, nil
+}
+
+func normalizeStringList(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func pluginByID(items []PluginResource, id string) PluginResource {
+	for _, item := range items {
+		if item.ID == id {
+			return item
+		}
+	}
+	return PluginResource{ID: id, Installed: false}
 }
 
 func parseTelegramUserID(value string) (int64, error) {

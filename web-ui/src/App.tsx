@@ -1,17 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
+import { useChannelsData } from "./hooks/useChannelsData";
 import { useConsoleData } from "./hooks/useConsoleData";
+import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
-import { CHANNEL_NAV_ITEMS, channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
+import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
 import { ChannelsPage } from "./pages/ChannelsPage";
 import { ModelsPage } from "./pages/ModelsPage";
 import { OpenAIProviderPage } from "./pages/OpenAIProviderPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ProviderPage } from "./pages/ProviderPage";
+import { QQBotChannelPage } from "./pages/QQBotChannelPage";
 import { TelegramChannelPage } from "./pages/TelegramChannelPage";
-import { useState } from "react";
 
 export default function App() {
   const location = useLocation();
@@ -21,11 +23,18 @@ export default function App() {
   const activeNav = navFromPath(location.pathname);
 
   const consoleData = useConsoleData(providerRoute);
-  const telegramChannel = useTelegramChannel(activeNav === "channels");
+  const channelsData = useChannelsData(activeNav === "channels");
+  const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh);
+  const qqbotChannel = useQQBotChannel(activeNav === "channels" && channelRoute === "qqbot", channelsData.refresh);
   const { setModelsExpanded } = consoleData;
   const [channelsExpanded, setChannelsExpanded] = useState(activeNav === "channels");
-  const shellError = activeNav === "channels" ? telegramChannel.error : consoleData.error;
-  const shellLoading = activeNav === "channels" ? telegramChannel.loading : consoleData.loading;
+
+  let shellError = consoleData.error;
+  let shellLoading = consoleData.loading;
+  if (activeNav === "channels") {
+    shellError = channelRoute === "telegram" ? telegramChannel.error : channelRoute === "qqbot" ? qqbotChannel.error : channelsData.error;
+    shellLoading = channelRoute === "telegram" ? telegramChannel.loading : channelRoute === "qqbot" ? qqbotChannel.loading : channelsData.loading;
+  }
 
   useEffect(() => {
     if (activeNav === "models") {
@@ -40,7 +49,7 @@ export default function App() {
     <AppShell
       activeNav={activeNav}
       apiBase={consoleData.apiBase}
-      channelNav={CHANNEL_NAV_ITEMS}
+      channelNav={channelsData.channelNav}
       channelRoute={channelRoute}
       channelsExpanded={channelsExpanded}
       error={shellError}
@@ -77,10 +86,7 @@ export default function App() {
       providerRoute={providerRoute}
     >
       <Routes>
-        <Route
-          path="/"
-          element={<Navigate to="/models" replace />}
-        />
+        <Route path="/" element={<Navigate to="/models" replace />} />
         <Route
           path="/models"
           element={
@@ -150,14 +156,8 @@ export default function App() {
             )
           }
         />
-        <Route
-          path="/agents"
-          element={<PlaceholderPage description="Agent resources will be managed here. API hooks can be added in the next iteration." title="Agents" />}
-        />
-        <Route
-          path="/channels"
-          element={<ChannelsPage onOpenTelegram={() => navigate("/channels/telegram")} />}
-        />
+        <Route path="/agents" element={<PlaceholderPage description="Agent resources will be managed here. API hooks can be added in the next iteration." title="Agents" />} />
+        <Route path="/channels" element={<ChannelsPage channels={channelsData.channels} onOpenChannel={(id) => navigate(`/channels/${encodeURIComponent(id)}`)} />} />
         <Route
           path="/channels/telegram"
           element={
@@ -176,13 +176,24 @@ export default function App() {
           }
         />
         <Route
-          path="/tools"
-          element={<PlaceholderPage description="Tool resources and policy controls will be managed here." title="Tools" />}
+          path="/channels/qqbot"
+          element={
+            <QQBotChannelPage
+              channel={qqbotChannel.channel}
+              form={qqbotChannel.form}
+              installResult={qqbotChannel.installResult}
+              isDirty={qqbotChannel.isDirty}
+              loading={qqbotChannel.loading}
+              onDisconnect={qqbotChannel.disconnect}
+              onFormChange={qqbotChannel.setForm}
+              onInstallPlugin={qqbotChannel.installPlugin}
+              onRefresh={qqbotChannel.refresh}
+              onSave={qqbotChannel.save}
+            />
+          }
         />
-        <Route
-          path="*"
-          element={<Navigate to="/models" replace />}
-        />
+        <Route path="/tools" element={<PlaceholderPage description="Tool resources and policy controls will be managed here." title="Tools" />} />
+        <Route path="*" element={<Navigate to="/models" replace />} />
       </Routes>
     </AppShell>
   );

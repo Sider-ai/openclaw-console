@@ -39,6 +39,13 @@ func NewRouter(h *Handler) http.Handler {
 		r.Patch("/channels/telegram", h.PatchTelegramChannel)
 		r.Post("/channels/telegram:test", h.TestTelegramChannel)
 		r.Post("/channels/telegram:disconnect", h.DisconnectTelegramChannel)
+		r.Get("/channels", h.ListChannels)
+		r.Get("/channels/qqbot", h.GetQQBotChannel)
+		r.Patch("/channels/qqbot", h.PatchQQBotChannel)
+		r.Post("/channels/qqbot:disconnect", h.DisconnectQQBotChannel)
+
+		r.Get("/plugins", h.ListPlugins)
+		r.Post("/plugins/qqbot:install", h.InstallQQBotPlugin)
 
 		r.Get("/modelCatalogEntries", h.ListModelCatalogEntries)
 

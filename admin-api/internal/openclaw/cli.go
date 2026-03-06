@@ -49,6 +49,28 @@ type modelsList struct {
 	} `json:"models"`
 }
 
+type pluginsList struct {
+	Plugins []struct {
+		ID         string   `json:"id"`
+		Name       string   `json:"name"`
+		Version    string   `json:"version"`
+		Source     string   `json:"source"`
+		Origin     string   `json:"origin"`
+		Enabled    bool     `json:"enabled"`
+		Status     string   `json:"status"`
+		ChannelIDs []string `json:"channelIds"`
+	} `json:"plugins"`
+}
+
+type channelsCapabilities struct {
+	Channels []struct {
+		Channel    string `json:"channel"`
+		AccountID  string `json:"accountId"`
+		Configured bool   `json:"configured"`
+		Enabled    bool   `json:"enabled"`
+	} `json:"channels"`
+}
+
 func (c *CLI) ModelsStatus(ctx context.Context) (modelsStatus, error) {
 	out, err := c.runJSON(ctx, "openclaw", "models", "status", "--json")
 	if err != nil {
@@ -88,6 +110,42 @@ func (c *CLI) SetDefaultModel(ctx context.Context, model string) error {
 func (c *CLI) GatewayRestart(ctx context.Context) error {
 	_, err := c.run(ctx, "openclaw", "gateway", "restart")
 	return err
+}
+
+func (c *CLI) PluginsList(ctx context.Context) (pluginsList, error) {
+	out, err := c.runJSON(ctx, "openclaw", "plugins", "list", "--json")
+	if err != nil {
+		return pluginsList{}, err
+	}
+	var res pluginsList
+	if err := json.Unmarshal(out, &res); err != nil {
+		return pluginsList{}, fmt.Errorf("parse plugins list: %w", err)
+	}
+	return res, nil
+}
+
+func (c *CLI) InstallPlugin(ctx context.Context, spec string) (string, error) {
+	out, err := c.run(ctx, "openclaw", "plugins", "install", spec)
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channelsCapabilities, error) {
+	args := []string{"channels", "capabilities", "--json"}
+	if strings.TrimSpace(channel) != "" {
+		args = append(args, "--channel", channel)
+	}
+	out, err := c.runJSON(ctx, "openclaw", args...)
+	if err != nil {
+		return channelsCapabilities{}, err
+	}
+	var res channelsCapabilities
+	if err := json.Unmarshal(out, &res); err != nil {
+		return channelsCapabilities{}, fmt.Errorf("parse channels capabilities: %w", err)
+	}
+	return res, nil
 }
 
 func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, error) {

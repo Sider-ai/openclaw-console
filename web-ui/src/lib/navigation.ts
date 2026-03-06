@@ -1,4 +1,4 @@
-import type { ChannelNav, ModelProviderNav, NavKey, ProviderSummary } from "./types";
+import type { ChannelNav, ChannelSummary, ModelProviderNav, NavKey, ProviderSummary } from "./types";
 
 export const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
 
@@ -7,9 +7,14 @@ export const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models" | "channels">; labe
   { key: "tools", label: "Tools", path: "/tools" }
 ];
 
-export const CHANNEL_NAV_ITEMS: ChannelNav[] = [
-  { id: "telegram", label: "Telegram" }
-];
+export function buildChannelNav(channels: ChannelSummary[]): ChannelNav[] {
+  return [...channels]
+    .sort((a, b) => a.displayName.localeCompare(b.displayName))
+    .map((item) => ({
+      id: item.channelId,
+      label: item.displayName
+    }));
+}
 
 export function fallbackProviderLabel(providerId: string): string {
   const parts = providerId

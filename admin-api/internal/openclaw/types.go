@@ -124,6 +124,76 @@ type TelegramChannelTestResult struct {
 	BotFirstName string `json:"botFirstName,omitempty"`
 }
 
+type ChannelSummaryResource struct {
+	Name            string `json:"name"`
+	ChannelID       string `json:"channelId"`
+	DisplayName     string `json:"displayName"`
+	Enabled         bool   `json:"enabled"`
+	Configured      bool   `json:"configured"`
+	PluginInstalled bool   `json:"pluginInstalled"`
+	Installable     bool   `json:"installable"`
+}
+
+type PluginResource struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Version    string   `json:"version,omitempty"`
+	Installed  bool     `json:"installed"`
+	Enabled    bool     `json:"enabled"`
+	Status     string   `json:"status,omitempty"`
+	Origin     string   `json:"origin,omitempty"`
+	Source     string   `json:"source,omitempty"`
+	ChannelIDs []string `json:"channelIds,omitempty"`
+}
+
+type PluginInstallResult struct {
+	Name      string         `json:"name"`
+	PluginID  string         `json:"pluginId"`
+	Spec      string         `json:"spec"`
+	Installed bool           `json:"installed"`
+	Restarted bool           `json:"restarted"`
+	Output    string         `json:"output,omitempty"`
+	Plugin    PluginResource `json:"plugin"`
+}
+
+type QQBotChannelResource struct {
+	Name                   string   `json:"name"`
+	ChannelID              string   `json:"channelId"`
+	DisplayName            string   `json:"displayName"`
+	PluginInstalled        bool     `json:"pluginInstalled"`
+	PluginVersion          string   `json:"pluginVersion,omitempty"`
+	PluginStatus           string   `json:"pluginStatus,omitempty"`
+	PluginSpec             string   `json:"pluginSpec"`
+	Enabled                bool     `json:"enabled"`
+	Configured             bool     `json:"configured"`
+	AppID                  string   `json:"appId,omitempty"`
+	AppIDConfigured        bool     `json:"appIdConfigured"`
+	ClientSecretConfigured bool     `json:"clientSecretConfigured"`
+	AllowFrom              []string `json:"allowFrom,omitempty"`
+	MarkdownSupport        bool     `json:"markdownSupport"`
+	ImageServerBaseURL     string   `json:"imageServerBaseUrl,omitempty"`
+	LastAppliedAction      string   `json:"lastAppliedAction,omitempty"`
+}
+
+type QQBotChannelConfig struct {
+	Enabled            bool
+	AppID              string
+	ClientSecret       string
+	ClientSecretFile   string
+	AllowFrom          []string
+	MarkdownSupport    bool
+	ImageServerBaseURL string
+}
+
+type QQBotChannelUpdate struct {
+	Enabled            bool
+	AppID              string
+	ClientSecret       *string
+	AllowFrom          []string
+	MarkdownSupport    bool
+	ImageServerBaseURL string
+}
+
 func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }

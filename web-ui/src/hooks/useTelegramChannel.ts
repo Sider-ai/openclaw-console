@@ -29,7 +29,7 @@ function parseAllowFrom(values: string[]): string[] {
     .filter(Boolean);
 }
 
-export function useTelegramChannel(enabled: boolean) {
+export function useTelegramChannel(enabled: boolean, onChanged?: () => Promise<void>) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [channel, setChannel] = useState<TelegramChannel | null>(null);
@@ -109,6 +109,9 @@ export function useTelegramChannel(enabled: boolean) {
       setChannel(res);
       setTestResult(null);
       syncForm(res);
+      if (onChanged) {
+        await onChanged()
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -150,6 +153,9 @@ export function useTelegramChannel(enabled: boolean) {
       setChannel(res);
       setTestResult(null);
       syncForm(res);
+      if (onChanged) {
+        await onChanged()
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {

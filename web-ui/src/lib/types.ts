@@ -30,6 +30,38 @@ export type ChannelNav = {
   label: string;
 };
 
+export type ChannelSummary = {
+  name: string;
+  channelId: string;
+  displayName: string;
+  enabled: boolean;
+  configured: boolean;
+  pluginInstalled: boolean;
+  installable: boolean;
+};
+
+export type Plugin = {
+  id: string;
+  name: string;
+  version?: string;
+  installed: boolean;
+  enabled: boolean;
+  status?: string;
+  origin?: string;
+  source?: string;
+  channelIds?: string[];
+};
+
+export type PluginInstallResult = {
+  name: string;
+  pluginId: string;
+  spec: string;
+  installed: boolean;
+  restarted: boolean;
+  output?: string;
+  plugin: Plugin;
+};
+
 export type CatalogEntry = {
   name: string;
   modelKey: string;
@@ -75,6 +107,25 @@ export type TelegramChannelTestResult = {
   botId?: number;
   botUsername?: string;
   botFirstName?: string;
+};
+
+export type QQBotChannel = {
+  name: string;
+  channelId: string;
+  displayName: string;
+  pluginInstalled: boolean;
+  pluginVersion?: string;
+  pluginStatus?: string;
+  pluginSpec: string;
+  enabled: boolean;
+  configured: boolean;
+  appId?: string;
+  appIdConfigured: boolean;
+  clientSecretConfigured: boolean;
+  allowFrom?: string[];
+  markdownSupport: boolean;
+  imageServerBaseUrl?: string;
+  lastAppliedAction?: string;
 };
 
 export type NavKey = "agents" | "channels" | "tools" | "models";

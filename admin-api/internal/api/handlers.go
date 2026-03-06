@@ -236,6 +236,79 @@ func (h *Handler) DisconnectTelegramChannel(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, res)
 }
 
+func (h *Handler) ListChannels(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListChannels(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, channelListResponse{Channels: items})
+}
+
+func (h *Handler) GetQQBotChannel(w http.ResponseWriter, r *http.Request) {
+	res, err := h.service.GetQQBotChannel(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) PatchQQBotChannel(w http.ResponseWriter, r *http.Request) {
+	var req patchQQBotChannelRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	res, err := h.service.UpdateQQBotChannel(r.Context(), openclaw.QQBotChannelUpdate{
+		Enabled:            req.Enabled,
+		AppID:              strings.TrimSpace(req.AppID),
+		ClientSecret:       req.ClientSecret,
+		AllowFrom:          req.AllowFrom,
+		MarkdownSupport:    req.MarkdownSupport,
+		ImageServerBaseURL: strings.TrimSpace(req.ImageServerBaseURL),
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "appId is required") {
+			writeBadRequest(w, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) DisconnectQQBotChannel(w http.ResponseWriter, r *http.Request) {
+	res, err := h.service.DisconnectQQBotChannel(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) ListPlugins(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListPlugins(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, pluginListResponse{Plugins: items})
+}
+
+func (h *Handler) InstallQQBotPlugin(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+
+	res, err := h.service.InstallQQBotPlugin(ctx)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request) {
 	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
 	if provider == "" {

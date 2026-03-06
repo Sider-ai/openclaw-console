@@ -45,6 +45,15 @@ type testTelegramChannelRequest struct {
 	BotToken string `json:"botToken,omitempty"`
 }
 
+type patchQQBotChannelRequest struct {
+	Enabled            bool     `json:"enabled"`
+	AppID              string   `json:"appId"`
+	ClientSecret       *string  `json:"clientSecret,omitempty"`
+	AllowFrom          []string `json:"allowFrom,omitempty"`
+	MarkdownSupport    bool     `json:"markdownSupport"`
+	ImageServerBaseURL string   `json:"imageServerBaseUrl,omitempty"`
+}
+
 type modelCatalogListResponse struct {
 	ModelCatalogEntries any    `json:"modelCatalogEntries"`
 	NextPageToken       string `json:"nextPageToken,omitempty"`
@@ -56,4 +65,12 @@ type providerListResponse struct {
 
 type authProfileListResponse struct {
 	AuthProfiles any `json:"authProfiles"`
+}
+
+type channelListResponse struct {
+	Channels any `json:"channels"`
+}
+
+type pluginListResponse struct {
+	Plugins any `json:"plugins"`
 }
