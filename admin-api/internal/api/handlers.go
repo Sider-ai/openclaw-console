@@ -176,7 +176,12 @@ func (h *Handler) GetAuthProfile(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request) {
 	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
 	if provider == "" {
-		writeBadRequest(w, "provider is required")
+		items, err := h.service.ListModelCatalogSnapshot(r.Context())
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, modelCatalogListResponse{ModelCatalogEntries: items})
 		return
 	}
 	pageSize := 50
@@ -194,6 +199,10 @@ func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		if strings.Contains(err.Error(), "provider is required") {
 			writeBadRequest(w, err.Error())
+			return
+		}
+		if strings.Contains(err.Error(), "unsupported provider") {
+			writeNotFound(w, err.Error())
 			return
 		}
 		if strings.Contains(err.Error(), "page token") {

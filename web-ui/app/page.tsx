@@ -170,9 +170,10 @@ export default function Page() {
     setError("");
 
     try {
-      const [setting, providerList] = await Promise.all([
+      const [setting, providerList, catalogSnapshot] = await Promise.all([
         api<ModelSetting>("/v1/modelSettings/default"),
-        api<{ providers: ProviderSummary[] }>("/v1/providers")
+        api<{ providers: ProviderSummary[] }>("/v1/providers"),
+        api<{ modelCatalogEntries: CatalogEntry[] }>("/v1/modelCatalogEntries")
       ]);
 
       setModelSetting(setting);
@@ -192,38 +193,7 @@ export default function Page() {
         providerLabelByID.set(item.providerId, item.displayName || fallbackProviderLabel(item.providerId));
       });
 
-      const providerIDs = Array.from(new Set(nextProviders.map((item) => item.providerId).filter(Boolean)));
-      const catalogFetches = await Promise.allSettled(
-        providerIDs.map(async (providerID) => {
-          const all: CatalogEntry[] = [];
-          let pageToken = "";
-          for (;;) {
-            const query = new URLSearchParams({
-              provider: providerID,
-              page_size: "200"
-            });
-            if (pageToken) {
-              query.set("page_token", pageToken);
-            }
-            const res = await api<{ modelCatalogEntries: CatalogEntry[]; nextPageToken?: string }>(
-              `/v1/modelCatalogEntries?${query.toString()}`
-            );
-            all.push(...(res.modelCatalogEntries || []));
-            if (!res.nextPageToken) {
-              break;
-            }
-            pageToken = res.nextPageToken;
-          }
-          return all.map((entry) => ({
-            ...entry,
-            provider: entry.provider || providerID
-          }));
-        })
-      );
-
-      const availableModels = catalogFetches
-        .filter((item): item is PromiseFulfilledResult<CatalogEntry[]> => item.status === "fulfilled")
-        .flatMap((item) => item.value)
+      const availableModels = (catalogSnapshot.modelCatalogEntries || [])
         .filter((entry) => entry.available)
         .sort((a, b) => {
           const providerA = providerLabelByID.get(a.provider) || fallbackProviderLabel(a.provider);
