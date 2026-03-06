@@ -1,49 +1,100 @@
-# Repository Guidelines
+# CLAUDE.md
 
-## Project Structure & Module Organization
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This repository is a small monorepo for OpenClaw Console.
+## Project Overview
 
-- `admin-api/`: Go console API built with Chi. Entry point is `cmd/server`, core logic lives under `internal/openclaw`, HTTP handlers under `internal/api`, and embedded UI assets under `internal/ui/dist/`.
-- `web-ui/`: Vite + React frontend. Main source files live under `src/`.
-- `scripts/`: helper scripts, including single-binary packaging.
-- `dist/`: build outputs such as `openclaw-console` and Linux release binaries.
+OpenClaw Console is a monorepo containing:
 
-Keep backend and frontend changes scoped to their module unless the API contract changes.
+- `admin-api/` — Go + Chi HTTP API, wraps the local `openclaw` CLI binary
+- `web-ui/` — React + Vite + TypeScript frontend, served as embedded assets in the single binary
+- `scripts/` — build helpers
+- `dist/` — build outputs (not committed except for release tasks)
 
-## Build, Test, and Development Commands
+The production artifact is a single self-contained binary (`dist/openclaw-console`) where the Go server embeds the compiled web assets via `//go:embed` from `admin-api/internal/ui/dist/`.
 
-- `cd admin-api && go run ./cmd/server`: run the backend on `:18080`.
-- `cd web-ui && VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev`: run the UI locally on `:3000`.
-- `cd admin-api && go test ./...`: run backend tests.
-- `cd web-ui && npm run lint`: run frontend lint checks.
-- `cd web-ui && npm run build`: verify the production frontend build.
-- `./scripts/build-single-binary.sh` or `make build`: build one executable with embedded UI.
-- `make build-linux-amd64`: produce the Linux `x86_64` binary in `dist/`.
+## Commands
 
-## Coding Style & Naming Conventions
+### Backend
 
-Use standard Go formatting with `gofmt`; keep packages small and internal APIs explicit. Prefer resource-oriented handler names such as `ListProviders` and `GetProvider`.
+```bash
+cd admin-api
+go run ./cmd/server           # dev server on :18080
+go test ./...                 # run all tests
+golangci-lint run             # lint
+```
 
-For the frontend, use TypeScript, 2-space indentation, and existing React/Next.js patterns in `web-ui/app/`. Prefer descriptive names like `providerStatus`, `modelOptions`, and `codexSession`. Follow the current ESLint setup rather than introducing a parallel style system.
+### Frontend
 
-## Testing Guidelines
+```bash
+cd web-ui
+VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev   # dev server on :3000
+npm run build                 # production build + TypeScript check
+npm run lint                  # ESLint
+npx shadcn@latest add <name>  # install a new shadcn component
+```
 
-Backend coverage is validated with `go test ./...`; add table-driven tests when logic is non-trivial. Frontend changes are currently validated with `npm run lint` and `npm run build`. If you add tests, place them next to the code they exercise and use conventional names such as `service_test.go`.
+### Full single-binary build
 
-## Commit & Pull Request Guidelines
+```bash
+make build                    # current platform → dist/openclaw-console
+make build-linux-amd64        # Linux x86_64 → dist/openclaw-console-linux-amd64
+```
 
-Recent history uses short imperative subjects and occasional conventional prefixes, for example `feat: support API key configuration...` or `style(ui): adopt minimal...`. Keep commit titles concise and specific.
+The build script runs `npm ci && npm run build` in `web-ui/`, copies output to `admin-api/internal/ui/dist/`, then `go build` with `-trimpath -ldflags="-s -w"`.
 
-PRs should include:
+## Architecture
 
-- a short summary of behavior changes
-- validation steps you ran
-- screenshots or UI notes for frontend changes
-- linked issue/context when the change is user-facing or operational
+### Backend (`admin-api/`)
 
-Prefer small PRs that keep backend API changes and UI follow-ups easy to review.
+Layered as `cmd/server` → `internal/api` → `internal/openclaw`:
 
-## Configuration & Security Tips
+- **`internal/openclaw/cli.go`** — shells out to the `openclaw` CLI binary to read providers, model catalog, and manage plugins. All provider data flows through the CLI.
+- **`internal/openclaw/cache.go`** — `serviceCache` holds a background-refreshed snapshot of providers + model catalog (expensive CLI calls). Most read handlers hit the cache, not the CLI directly.
+- **`internal/openclaw/store.go`** — reads/writes OpenClaw config files on disk (Telegram channel config, QQ Bot config, provider API keys, auth profiles).
+- **`internal/openclaw/sessions.go`** — manages Codex OAuth sessions via a PTY process running `openclaw onboard`. Session state machine: `CREATED → LAUNCHING_ONBOARD → AWAITING_REDIRECT_URL → EXCHANGING_TOKEN → MERGING_CREDENTIALS → RESTARTING_SERVICE → SUCCEEDED/FAILED/CANCELLED/EXPIRED`.
+- **`internal/api/handlers.go`** — thin HTTP handlers delegating to `Service`. Resource-oriented naming (`ListProviders`, `GetProvider`, etc.).
+- **`internal/ui/handler.go`** — serves embedded web assets; falls back to `index.html` for SPA routing.
 
-Useful env vars include `OPENCLAW_HOME`, `OPENCLAW_CONFIG_PATH`, `OPENCLAW_CONSOLE_ADDR`, and `OPENCLAW_ADMIN_SKIP_RESTART=1`. Do not commit API keys, auth profiles, `dist/` contents, or release binaries unless the task explicitly requires built artifacts.
+API is mounted at `/api/v1`. CORS and optional HTTP Basic Auth are applied as middleware in `router.go`.
+
+### Frontend (`web-ui/src/`)
+
+**State architecture** — `App.tsx` is the state hub. It instantiates all data hooks and passes derived state + callbacks down to pages via props. There is no global state library.
+
+Key hooks:
+- **`useConsoleData`** — owns provider/model data, fetches on route change, manages Codex session polling
+- **`useTelegramChannel`** / **`useQQBotChannel`** — channel-specific CRUD, each enabled only when the relevant route is active
+- **`useChannelsData`** — channel summary list for sidebar nav
+- **`useConfirmDialog`** — Promise-based AlertDialog replacing `window.confirm`
+
+**Routing** — React Router v6, all pages are `React.lazy()` wrapped in a single `<Suspense>`. Routes live entirely in `App.tsx`.
+
+**UI stack** — Tailwind CSS v3 (not v4), shadcn/ui components in `src/components/ui/`, Lucide icons. Path alias `@/` maps to `src/`. `lib/api.ts` is the single fetch wrapper; errors are surfaced via `error.message` and displayed in AppShell's header section.
+
+**Navigation** — `lib/navigation.ts` is a pure-logic module (no UI imports). `AppShell.tsx` owns all sidebar rendering including icon mapping via `ROOT_NAV_ICONS`.
+
+## Conventions
+
+- Go: `gofmt`, resource-oriented handler names (`ListX`, `GetX`, `PatchX`, `PostX:action`)
+- TypeScript: 2-space indent, strict mode, named exports for pages and components
+- Tailwind: semantic tokens (`bg-card`, `text-muted-foreground`, `border-border`) over raw colors; `rounded-xl ring-1 ring-border/60 shadow-sm` for section cards
+- New shadcn components: install with `npx shadcn@latest add <name>` from `web-ui/`
+- Keep `lib/navigation.ts` free of runtime UI dependencies (no Lucide imports)
+- Frontend validation: `npm run build` (TypeScript + bundle) is the authoritative check
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENCLAW_HOME` | OpenClaw default | Override OpenClaw home directory |
+| `OPENCLAW_CONFIG_PATH` | OpenClaw default | Override config file path |
+| `OPENCLAW_CONSOLE_ADDR` | `:18080` | Listen address |
+| `OPENCLAW_CONSOLE_AUTH_USER` | empty | Enable HTTP Basic Auth (pair with PASSWORD) |
+| `OPENCLAW_CONSOLE_AUTH_PASSWORD` | empty | Enable HTTP Basic Auth (pair with USER) |
+| `OPENCLAW_ADMIN_SKIP_RESTART` | empty | Set to `1` to skip `systemctl restart openclaw` after config changes |
+| `VITE_ADMIN_API_BASE` | `/api` | Frontend API base URL (dev only) |
+
+## Commit & PR Style
+
+Conventional prefixes: `feat`, `fix`, `refactor`, `style`, `chore`. Keep titles concise and specific. PRs should include a summary of behavior changes and the validation steps run.
