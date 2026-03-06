@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Code } from "@/components/code";
 
 type TelegramChannelForm = {
@@ -83,23 +84,24 @@ export function TelegramChannelPage({
 
   return (
     <>
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
           <div>
-            <h2 className="text-xl font-semibold">Telegram Channel</h2>
-            <p className="text-sm text-muted-foreground">Connect OpenClaw to Telegram with a Telegram bot. Default mode is long polling, so you do not need a public webhook URL for the first setup.</p>
+            <h2 className="text-base font-semibold tracking-tight">Telegram Channel</h2>
+            <p className="text-sm text-muted-foreground mt-1">Connect OpenClaw to Telegram with a Telegram bot. Default mode is long polling, so you do not need a public webhook URL for the first setup.</p>
           </div>
           <a href={TELEGRAM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
             Open Docs
           </a>
         </div>
+        <Separator className="my-3" />
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm">Status</span>
             {isConfigured ? (
-              <Badge className="bg-green-500 text-white">Configured</Badge>
+              <Badge className="bg-green-500 text-white transition-colors duration-150 hover:bg-green-600">Configured</Badge>
             ) : (
-              <Badge variant="secondary">Not Configured</Badge>
+              <Badge variant="secondary" className="transition-colors duration-150">Not Configured</Badge>
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -113,39 +115,41 @@ export function TelegramChannelPage({
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">Before You Start</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight mb-2">Before You Start</h2>
+        <Separator className="mb-4" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-md border p-4">
+          <div className="rounded-lg border p-4">
             <strong className="font-semibold">1. Open BotFather</strong>
             <p className="text-sm text-muted-foreground mt-1">In Telegram, search for <Code>@BotFather</Code>. This is the official Telegram bot used to create and manage bots.</p>
           </div>
-          <div className="rounded-md border p-4">
+          <div className="rounded-lg border p-4">
             <strong className="font-semibold">2. Create a bot</strong>
             <p className="text-sm text-muted-foreground mt-1">Send <Code>/newbot</Code> to BotFather and follow the prompts. Telegram will give you a bot token.</p>
           </div>
-          <div className="rounded-md border p-4">
+          <div className="rounded-lg border p-4">
             <strong className="font-semibold">3. Copy the token</strong>
             <p className="text-sm text-muted-foreground mt-1">The token looks like <Code>123456:ABC...</Code>. Paste it into the form below. Keep it secret.</p>
           </div>
-          <div className="rounded-md border p-4">
+          <div className="rounded-lg border p-4">
             <strong className="font-semibold">4. Save and test</strong>
             <p className="text-sm text-muted-foreground mt-1">Save the configuration, then message your bot in Telegram with <Code>/start</Code> and a normal text message like <Code>hello</Code>.</p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <h2 className="text-xl font-semibold">Configuration</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+          <h2 className="text-base font-semibold tracking-tight">Configuration</h2>
           <Button variant="outline" onClick={() => void onRefresh()} disabled={loading} type="button">
             Refresh
           </Button>
         </div>
+        <Separator className="mb-6" />
 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-sm font-medium">Enable Telegram</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Enable Telegram</Label>
             <p className="text-sm text-muted-foreground">Turn the Telegram channel on. If this is off, OpenClaw will ignore Telegram messages.</p>
             <div className="flex items-center gap-2 mt-1">
               <Checkbox
@@ -158,7 +162,7 @@ export function TelegramChannelPage({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="bot-token" className="text-sm font-medium">Bot Token</Label>
+            <Label htmlFor="bot-token" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bot Token</Label>
             <p className="text-sm text-muted-foreground">Paste the token from BotFather. Leave this blank if you only want to keep the already saved token and update other settings.</p>
             <Input
               id="bot-token"
@@ -166,16 +170,16 @@ export function TelegramChannelPage({
               placeholder="123456:ABCDEF..."
               type="password"
               value={form.botToken}
-              className="max-w-md"
+              className="max-w-md transition-colors duration-150"
             />
             {channel?.botTokenConfigured && <p className="text-xs text-muted-foreground">A bot token is already saved in OpenClaw.</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="dm-policy" className="text-sm font-medium">DM Policy</Label>
+            <Label htmlFor="dm-policy" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">DM Policy</Label>
             <p className="text-sm text-muted-foreground">Controls who can send direct messages to the bot. Recommended default: <Code>pairing</Code>.</p>
             <Select value={form.dmPolicy} onValueChange={(value) => onFormChange((prev) => ({ ...prev, dmPolicy: value }))}>
-              <SelectTrigger id="dm-policy" className="max-w-xs">
+              <SelectTrigger id="dm-policy" className="max-w-xs transition-colors duration-150">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -188,12 +192,12 @@ export function TelegramChannelPage({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-sm font-medium">Allow From</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Allow From</Label>
             <p className="text-sm text-muted-foreground">Telegram user IDs allowed to talk to the bot in direct messages. Add one ID at a time. For <Code>open</Code> DM policy, add <Code>*</Code>.</p>
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap gap-2 items-center">
                 <Input
-                  className="max-w-xs"
+                  className="max-w-xs transition-colors duration-150"
                   onChange={(event) => setAllowFromDraft(event.target.value)}
                   onKeyDown={handleAllowFromKeyDown}
                   placeholder="123456789"
@@ -227,10 +231,10 @@ export function TelegramChannelPage({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="group-policy" className="text-sm font-medium">Group Policy</Label>
+            <Label htmlFor="group-policy" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Group Policy</Label>
             <p className="text-sm text-muted-foreground">Controls whether Telegram group messages are allowed. Recommended default: <Code>allowlist</Code>.</p>
             <Select value={form.groupPolicy} onValueChange={(value) => onFormChange((prev) => ({ ...prev, groupPolicy: value }))}>
-              <SelectTrigger id="group-policy" className="max-w-xs">
+              <SelectTrigger id="group-policy" className="max-w-xs transition-colors duration-150">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -242,7 +246,7 @@ export function TelegramChannelPage({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-sm font-medium">Require Mention In Groups</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Require Mention In Groups</Label>
             <p className="text-sm text-muted-foreground">Recommended for beginners. When enabled, the bot replies in groups only when it is mentioned.</p>
             <div className="flex items-center gap-2 mt-1">
               <Checkbox
@@ -268,8 +272,9 @@ export function TelegramChannelPage({
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">How To Verify It Works</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight mb-2">How To Verify It Works</h2>
+        <Separator className="mb-4" />
         <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
           <li>Save the configuration in this page.</li>
           <li>Open Telegram and search for your bot by username.</li>
@@ -278,7 +283,7 @@ export function TelegramChannelPage({
           <li>If you use <Code>allowlist</Code>, make sure your own Telegram user ID is included in <Code>Allow From</Code>.</li>
         </ol>
         {testResult && (
-          <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-4">
+          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
             <strong className="font-semibold">{testResult.message}</strong>
             {(testResult.botUsername || testResult.botFirstName) && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -290,7 +295,7 @@ export function TelegramChannelPage({
         )}
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
         <details open>
           <summary className="cursor-pointer font-medium text-sm select-none">Troubleshooting</summary>
           <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mt-3">
@@ -302,10 +307,10 @@ export function TelegramChannelPage({
         </details>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
         <details>
           <summary className="cursor-pointer font-medium text-sm select-none">Advanced: Raw Telegram Channel State</summary>
-          <pre className="mt-3 text-xs overflow-auto bg-muted p-3 rounded-md">{JSON.stringify(channel, null, 2)}</pre>
+          <pre className="mt-3 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify(channel, null, 2)}</pre>
         </details>
       </section>
     </>

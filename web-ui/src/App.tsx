@@ -1,19 +1,21 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
 import { useChannelsData } from "./hooks/useChannelsData";
+import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
 import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
 import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
-import { ChannelsPage } from "./pages/ChannelsPage";
-import { ModelsPage } from "./pages/ModelsPage";
-import { OpenAIProviderPage } from "./pages/OpenAIProviderPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
-import { ProviderPage } from "./pages/ProviderPage";
-import { QQBotChannelPage } from "./pages/QQBotChannelPage";
-import { TelegramChannelPage } from "./pages/TelegramChannelPage";
+
+const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
+const ModelsPage = lazy(() => import("./pages/ModelsPage").then((m) => ({ default: m.ModelsPage })));
+const OpenAIProviderPage = lazy(() => import("./pages/OpenAIProviderPage").then((m) => ({ default: m.OpenAIProviderPage })));
+const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage").then((m) => ({ default: m.PlaceholderPage })));
+const ProviderPage = lazy(() => import("./pages/ProviderPage").then((m) => ({ default: m.ProviderPage })));
+const QQBotChannelPage = lazy(() => import("./pages/QQBotChannelPage").then((m) => ({ default: m.QQBotChannelPage })));
+const TelegramChannelPage = lazy(() => import("./pages/TelegramChannelPage").then((m) => ({ default: m.TelegramChannelPage })));
 
 export default function App() {
   const location = useLocation();
@@ -22,9 +24,11 @@ export default function App() {
   const channelRoute = channelRouteFromPath(location.pathname);
   const activeNav = navFromPath(location.pathname);
 
-  const consoleData = useConsoleData(providerRoute);
+  const { requestConfirm, confirmDialogNode } = useConfirmDialog();
+
+  const consoleData = useConsoleData(providerRoute, { requestConfirm });
   const channelsData = useChannelsData(activeNav === "channels");
-  const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh);
+  const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh, { requestConfirm });
   const qqbotChannel = useQQBotChannel(activeNav === "channels" && channelRoute === "qqbot", channelsData.refresh);
   const { setModelsExpanded } = consoleData;
   const [channelsExpanded, setChannelsExpanded] = useState(activeNav === "channels");
@@ -45,156 +49,165 @@ export default function App() {
     }
   }, [activeNav, setModelsExpanded]);
 
-  return (
-    <AppShell
-      activeNav={activeNav}
-      apiBase={consoleData.apiBase}
-      channelNav={channelsData.channelNav}
-      channelRoute={channelRoute}
-      channelsExpanded={channelsExpanded}
-      error={shellError}
-      loading={shellLoading}
-      modelsExpanded={consoleData.modelsExpanded}
-      onNavigate={navigate}
-      onToggleChannels={() => {
-        if (activeNav === "channels") {
-          if (channelRoute !== null) {
-            navigate("/channels");
-            setChannelsExpanded(true);
-            return;
-          }
-          setChannelsExpanded((prev) => !prev);
-          return;
-        }
+  const onToggleChannels = useCallback(() => {
+    if (activeNav === "channels") {
+      if (channelRoute !== null) {
         navigate("/channels");
         setChannelsExpanded(true);
-      }}
-      onToggleModels={() => {
-        if (activeNav === "models") {
-          if (providerRoute !== null) {
-            navigate("/models");
-            consoleData.setModelsExpanded(true);
-            return;
-          }
-          consoleData.setModelsExpanded((prev) => !prev);
-          return;
-        }
+        return;
+      }
+      setChannelsExpanded((prev) => !prev);
+      return;
+    }
+    navigate("/channels");
+    setChannelsExpanded(true);
+  }, [activeNav, channelRoute, navigate]);
+
+  const onToggleModels = useCallback(() => {
+    if (activeNav === "models") {
+      if (providerRoute !== null) {
         navigate("/models");
-        consoleData.setModelsExpanded(true);
-      }}
-      providerNav={consoleData.providerNav}
-      providerRoute={providerRoute}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to="/models" replace />} />
-        <Route
-          path="/models"
-          element={
-            <ModelsPage
-              defaultModelProviderInput={consoleData.defaultModelProviderInput}
-              defaultModelInput={consoleData.defaultModelInput}
-              defaultModelUnavailable={consoleData.defaultModelUnavailable}
-              loading={consoleData.loading}
-              modelOptions={consoleData.modelOptions}
-              modelSetting={consoleData.modelSetting}
-              onDefaultModelChange={consoleData.selectDefaultModel}
-              onDefaultModelProviderChange={consoleData.selectDefaultModelProvider}
-              onRefresh={consoleData.refresh}
-              onUpdateDefaultModel={consoleData.updateDefaultModel}
-              providerLabel={consoleData.providerLabel}
+        setModelsExpanded(true);
+        return;
+      }
+      setModelsExpanded((prev) => !prev);
+      return;
+    }
+    navigate("/models");
+    setModelsExpanded(true);
+  }, [activeNav, providerRoute, navigate, setModelsExpanded]);
+
+  return (
+    <>
+      <AppShell
+        activeNav={activeNav}
+        apiBase={consoleData.apiBase}
+        channelNav={channelsData.channelNav}
+        channelRoute={channelRoute}
+        channelsExpanded={channelsExpanded}
+        error={shellError}
+        loading={shellLoading}
+        modelsExpanded={consoleData.modelsExpanded}
+        onNavigate={navigate}
+        onToggleChannels={onToggleChannels}
+        onToggleModels={onToggleModels}
+        providerNav={consoleData.providerNav}
+        providerRoute={providerRoute}
+      >
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/models" replace />} />
+            <Route
+              path="/models"
+              element={
+                <ModelsPage
+                  defaultModelProviderInput={consoleData.defaultModelProviderInput}
+                  defaultModelInput={consoleData.defaultModelInput}
+                  defaultModelUnavailable={consoleData.defaultModelUnavailable}
+                  loading={consoleData.loading}
+                  modelOptions={consoleData.modelOptions}
+                  modelSetting={consoleData.modelSetting}
+                  onDefaultModelChange={consoleData.selectDefaultModel}
+                  onDefaultModelProviderChange={consoleData.selectDefaultModelProvider}
+                  onRefresh={consoleData.refresh}
+                  onUpdateDefaultModel={consoleData.updateDefaultModel}
+                  providerLabel={consoleData.providerLabel}
+                />
+              }
             />
-          }
-        />
-        <Route
-          path="/models/providers/openai"
-          element={
-            <OpenAIProviderPage
-              apiKey={consoleData.apiKey}
-              codexProvider={consoleData.codexProvider}
-              codexSession={consoleData.codexSession}
-              inProgress={consoleData.inProgress}
-              loading={consoleData.loading}
-              onApiKeyChange={consoleData.setAPIKey}
-              onCancelSession={consoleData.cancelSession}
-              onConnectAPIKey={() => {
-                void consoleData.connectAPIKey("openai");
-              }}
-              onDisconnectOpenAI={() => {
-                void consoleData.disconnectProvider("openai");
-              }}
-              onDisconnectCodex={() => {
-                void consoleData.disconnectProvider("openai-codex");
-              }}
-              onRedirectURLChange={consoleData.setRedirectURL}
-              onStartSession={consoleData.startCodexSession}
-              onSubmitRedirect={consoleData.submitRedirect}
-              openaiProvider={consoleData.openaiProvider}
-              redirectURL={consoleData.redirectURL}
+            <Route
+              path="/models/providers/openai"
+              element={
+                <OpenAIProviderPage
+                  apiKey={consoleData.apiKey}
+                  codexProvider={consoleData.codexProvider}
+                  codexSession={consoleData.codexSession}
+                  inProgress={consoleData.inProgress}
+                  loading={consoleData.loading}
+                  onApiKeyChange={consoleData.setAPIKey}
+                  onCancelSession={consoleData.cancelSession}
+                  onConnectAPIKey={() => {
+                    void consoleData.connectAPIKey("openai");
+                  }}
+                  onDisconnectOpenAI={() => {
+                    void consoleData.disconnectProvider("openai");
+                  }}
+                  onDisconnectCodex={() => {
+                    void consoleData.disconnectProvider("openai-codex");
+                  }}
+                  onRedirectURLChange={consoleData.setRedirectURL}
+                  onStartSession={consoleData.startCodexSession}
+                  onSubmitRedirect={consoleData.submitRedirect}
+                  openaiProvider={consoleData.openaiProvider}
+                  redirectURL={consoleData.redirectURL}
+                />
+              }
             />
-          }
-        />
-        <Route
-          path="/models/providers/:providerId"
-          element={
-            providerRoute && providerRoute !== "openai" ? (
-              <ProviderPage
-                apiKey={consoleData.apiKey}
-                loading={consoleData.loading}
-                onApiKeyChange={consoleData.setAPIKey}
-                onConnectAPIKey={() => {
-                  void consoleData.connectAPIKey(providerRoute);
-                }}
-                onDisconnect={() => {
-                  void consoleData.disconnectProvider(providerRoute);
-                }}
-                providerID={providerRoute}
-                providerNav={consoleData.providerNav}
-                providerStatus={consoleData.providerStatus}
-              />
-            ) : (
-              <Navigate to="/models" replace />
-            )
-          }
-        />
-        <Route path="/agents" element={<PlaceholderPage description="Agent resources will be managed here. API hooks can be added in the next iteration." title="Agents" />} />
-        <Route path="/channels" element={<ChannelsPage channels={channelsData.channels} onOpenChannel={(id) => navigate(`/channels/${encodeURIComponent(id)}`)} />} />
-        <Route
-          path="/channels/telegram"
-          element={
-            <TelegramChannelPage
-              channel={telegramChannel.channel}
-              form={telegramChannel.form}
-              isDirty={telegramChannel.isDirty}
-              loading={telegramChannel.loading}
-              onDisconnect={telegramChannel.disconnect}
-              onFormChange={telegramChannel.setForm}
-              onRefresh={telegramChannel.refresh}
-              onSave={telegramChannel.save}
-              onTestConnection={telegramChannel.testConnection}
-              testResult={telegramChannel.testResult}
+            <Route
+              path="/models/providers/:providerId"
+              element={
+                providerRoute && providerRoute !== "openai" ? (
+                  <ProviderPage
+                    apiKey={consoleData.apiKey}
+                    loading={consoleData.loading}
+                    onApiKeyChange={consoleData.setAPIKey}
+                    onConnectAPIKey={() => {
+                      void consoleData.connectAPIKey(providerRoute);
+                    }}
+                    onDisconnect={() => {
+                      void consoleData.disconnectProvider(providerRoute);
+                    }}
+                    providerID={providerRoute}
+                    providerNav={consoleData.providerNav}
+                    providerStatus={consoleData.providerStatus}
+                  />
+                ) : (
+                  <Navigate to="/models" replace />
+                )
+              }
             />
-          }
-        />
-        <Route
-          path="/channels/qqbot"
-          element={
-            <QQBotChannelPage
-              channel={qqbotChannel.channel}
-              form={qqbotChannel.form}
-              installResult={qqbotChannel.installResult}
-              isDirty={qqbotChannel.isDirty}
-              loading={qqbotChannel.loading}
-              onDisconnect={qqbotChannel.disconnect}
-              onFormChange={qqbotChannel.setForm}
-              onInstallPlugin={qqbotChannel.installPlugin}
-              onRefresh={qqbotChannel.refresh}
-              onSave={qqbotChannel.save}
+            <Route path="/agents" element={<PlaceholderPage description="Agent resources will be managed here. API hooks can be added in the next iteration." title="Agents" />} />
+            <Route path="/channels" element={<ChannelsPage channels={channelsData.channels} onOpenChannel={(id) => navigate(`/channels/${encodeURIComponent(id)}`)} />} />
+            <Route
+              path="/channels/telegram"
+              element={
+                <TelegramChannelPage
+                  channel={telegramChannel.channel}
+                  form={telegramChannel.form}
+                  isDirty={telegramChannel.isDirty}
+                  loading={telegramChannel.loading}
+                  onDisconnect={telegramChannel.disconnect}
+                  onFormChange={telegramChannel.setForm}
+                  onRefresh={telegramChannel.refresh}
+                  onSave={telegramChannel.save}
+                  onTestConnection={telegramChannel.testConnection}
+                  testResult={telegramChannel.testResult}
+                />
+              }
             />
-          }
-        />
-        <Route path="/tools" element={<PlaceholderPage description="Tool resources and policy controls will be managed here." title="Tools" />} />
-        <Route path="*" element={<Navigate to="/models" replace />} />
-      </Routes>
-    </AppShell>
+            <Route
+              path="/channels/qqbot"
+              element={
+                <QQBotChannelPage
+                  channel={qqbotChannel.channel}
+                  form={qqbotChannel.form}
+                  installResult={qqbotChannel.installResult}
+                  isDirty={qqbotChannel.isDirty}
+                  loading={qqbotChannel.loading}
+                  onDisconnect={qqbotChannel.disconnect}
+                  onFormChange={qqbotChannel.setForm}
+                  onInstallPlugin={qqbotChannel.installPlugin}
+                  onRefresh={qqbotChannel.refresh}
+                  onSave={qqbotChannel.save}
+                />
+              }
+            />
+            <Route path="/tools" element={<PlaceholderPage description="Tool resources and policy controls will be managed here." title="Tools" />} />
+            <Route path="*" element={<Navigate to="/models" replace />} />
+          </Routes>
+        </Suspense>
+      </AppShell>
+      {confirmDialogNode}
+    </>
   );
 }

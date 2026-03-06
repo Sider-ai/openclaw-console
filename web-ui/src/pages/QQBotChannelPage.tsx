@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Code } from "@/components/code";
 
 type QQBotForm = {
@@ -83,23 +84,24 @@ export function QQBotChannelPage({
 
   return (
     <>
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
           <div>
-            <h2 className="text-xl font-semibold">QQ Bot</h2>
-            <p className="text-sm text-muted-foreground">Connect OpenClaw to Tencent QQ Bot through the community plugin. This is not a built-in OpenClaw channel.</p>
+            <h2 className="text-base font-semibold tracking-tight">QQ Bot</h2>
+            <p className="text-sm text-muted-foreground mt-1">Connect OpenClaw to Tencent QQ Bot through the community plugin. This is not a built-in OpenClaw channel.</p>
           </div>
           <a href={QQBOT_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
             Open Plugin Docs
           </a>
         </div>
+        <Separator className="my-3" />
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm">Status</span>
             {isConnected ? (
-              <Badge className="bg-green-500 text-white">{statusLabel}</Badge>
+              <Badge className="bg-green-500 text-white transition-colors duration-150 hover:bg-green-600">{statusLabel}</Badge>
             ) : (
-              <Badge variant="secondary">{statusLabel}</Badge>
+              <Badge variant="secondary" className="transition-colors duration-150">{statusLabel}</Badge>
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -115,8 +117,9 @@ export function QQBotChannelPage({
 
       {!pluginInstalled ? (
         <>
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-2">Install Plugin</h2>
+          <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+            <h2 className="text-base font-semibold tracking-tight mb-2">Install Plugin</h2>
+            <Separator className="mb-4" />
             <p className="text-sm text-muted-foreground mb-1">QQ Bot support comes from the community plugin <Code>{channel?.pluginSpec || "@sliverp/qqbot@1.5.2"}</Code>. Installing it lets OpenClaw expose the <Code>qqbot</Code> channel.</p>
             <p className="text-sm text-muted-foreground mb-4">This action installs and runs third-party code inside OpenClaw. Review the plugin before installing it in production.</p>
             <div className="flex flex-wrap gap-2">
@@ -130,13 +133,14 @@ export function QQBotChannelPage({
             {installResult?.output && (
               <details className="mt-4">
                 <summary className="cursor-pointer font-medium text-sm select-none">Install Output</summary>
-                <pre className="mt-3 text-xs overflow-auto bg-muted p-3 rounded-md">{installResult.output}</pre>
+                <pre className="mt-3 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{installResult.output}</pre>
               </details>
             )}
           </section>
 
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Before You Install</h2>
+          <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+            <h2 className="text-base font-semibold tracking-tight mb-2">Before You Install</h2>
+            <Separator className="mb-4" />
             <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
               <li>
                 Open{" "}
@@ -152,10 +156,11 @@ export function QQBotChannelPage({
         </>
       ) : (
         <>
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">Before You Start</h2>
+          <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+            <h2 className="text-base font-semibold tracking-tight mb-2">Before You Start</h2>
+            <Separator className="mb-4" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-md border p-4">
+              <div className="rounded-lg border p-4">
                 <strong className="font-semibold">1. Open QQ Bot Platform</strong>
                 <p className="text-sm text-muted-foreground mt-1">Use the official OpenClaw entry page on QQ Open Platform. From there you can sign in, register if needed, and create your QQ Bot application.</p>
                 <p className="mt-2">
@@ -164,11 +169,11 @@ export function QQBotChannelPage({
                   </a>
                 </p>
               </div>
-              <div className="rounded-md border p-4">
+              <div className="rounded-lg border p-4">
                 <strong className="font-semibold">2. Copy App ID and App Secret</strong>
                 <p className="text-sm text-muted-foreground mt-1">After creating the bot, open its management page and copy the <Code>App ID</Code> and <Code>App Secret</Code> back into this form.</p>
               </div>
-              <div className="rounded-md border p-4">
+              <div className="rounded-lg border p-4">
                 <strong className="font-semibold">3. Start with sandbox direct messages</strong>
                 <p className="text-sm text-muted-foreground mt-1">The plugin README recommends beginning with QQ sandbox direct messages before expanding to other message types.</p>
                 <p className="mt-2">
@@ -180,17 +185,18 @@ export function QQBotChannelPage({
             </div>
           </section>
 
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <h2 className="text-xl font-semibold">Configuration</h2>
+          <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+              <h2 className="text-base font-semibold tracking-tight">Configuration</h2>
               <Button variant="outline" disabled={loading} onClick={() => void onRefresh()} type="button">
                 Refresh
               </Button>
             </div>
+            <Separator className="mb-6" />
 
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-sm font-medium">Enable QQ Bot</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Enable QQ Bot</Label>
                 <p className="text-sm text-muted-foreground">Turn the QQ Bot channel on after the plugin is installed and configured.</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Checkbox
@@ -203,11 +209,11 @@ export function QQBotChannelPage({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="app-id" className="text-sm font-medium">App ID</Label>
+                <Label htmlFor="app-id" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">App ID</Label>
                 <p className="text-sm text-muted-foreground">Paste the QQ Bot <Code>App ID</Code> from <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">QQ Bot for OpenClaw</a>.</p>
                 <Input
                   id="app-id"
-                  className="max-w-md"
+                  className="max-w-md transition-colors duration-150"
                   onChange={(event) => onFormChange((prev) => ({ ...prev, appId: event.target.value }))}
                   placeholder="1024..."
                   type="text"
@@ -216,11 +222,11 @@ export function QQBotChannelPage({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="client-secret" className="text-sm font-medium">App Secret</Label>
+                <Label htmlFor="client-secret" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">App Secret</Label>
                 <p className="text-sm text-muted-foreground">Paste the <Code>App Secret</Code>. Leave this blank to keep the already saved secret while updating other settings.</p>
                 <Input
                   id="client-secret"
-                  className="max-w-md"
+                  className="max-w-md transition-colors duration-150"
                   onChange={(event) => onFormChange((prev) => ({ ...prev, clientSecret: event.target.value }))}
                   placeholder="Paste App Secret"
                   type="password"
@@ -230,12 +236,12 @@ export function QQBotChannelPage({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label className="text-sm font-medium">Allow From</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Allow From</Label>
                 <p className="text-sm text-muted-foreground">Allowed QQ users. Add one user ID at a time. Use <Code>*</Code> to allow everyone.</p>
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-wrap gap-2 items-center">
                     <Input
-                      className="max-w-xs"
+                      className="max-w-xs transition-colors duration-150"
                       onChange={(event) => setAllowFromDraft(event.target.value)}
                       onKeyDown={handleAllowFromKeyDown}
                       placeholder="QQ user ID or *"
@@ -269,7 +275,7 @@ export function QQBotChannelPage({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label className="text-sm font-medium">Markdown Support</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Markdown Support</Label>
                 <p className="text-sm text-muted-foreground">Enable only if your QQ Bot account has permission to send markdown messages.</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Checkbox
@@ -282,11 +288,11 @@ export function QQBotChannelPage({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="image-server-url" className="text-sm font-medium">Image Server Base URL</Label>
+                <Label htmlFor="image-server-url" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Image Server Base URL</Label>
                 <p className="text-sm text-muted-foreground">Optional. Set this only if you need the plugin image server workflow described in the plugin docs.</p>
                 <Input
                   id="image-server-url"
-                  className="max-w-md"
+                  className="max-w-md transition-colors duration-150"
                   onChange={(event) => onFormChange((prev) => ({ ...prev, imageServerBaseUrl: event.target.value }))}
                   placeholder="https://example.com"
                   type="url"
@@ -305,8 +311,9 @@ export function QQBotChannelPage({
             </div>
           </section>
 
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">How To Verify It Works</h2>
+          <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+            <h2 className="text-base font-semibold tracking-tight mb-2">How To Verify It Works</h2>
+            <Separator className="mb-4" />
             <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
               <li>Save the configuration on this page.</li>
               <li>Open <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">QQ Bot for OpenClaw</a> and keep the bot in sandbox mode.</li>

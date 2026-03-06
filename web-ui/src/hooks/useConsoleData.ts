@@ -17,7 +17,7 @@ import type {
   ProviderSummary
 } from "../lib/types";
 
-export function useConsoleData(providerRoute: string | null) {
+export function useConsoleData(providerRoute: string | null, options?: { requestConfirm?: (msg: string) => Promise<boolean> }) {
   const navigate = useNavigate();
 
   const [modelsExpanded, setModelsExpanded] = useState(providerRoute === null);
@@ -205,7 +205,9 @@ export function useConsoleData(providerRoute: string | null) {
   }
 
   async function disconnectProvider(providerID: string) {
-    const confirmed = window.confirm(`Disconnect provider "${providerID}"?`);
+    const confirmed = options?.requestConfirm
+      ? await options.requestConfirm(`Disconnect provider "${providerID}"?`)
+      : window.confirm(`Disconnect provider "${providerID}"?`);
     if (!confirmed) {
       return;
     }

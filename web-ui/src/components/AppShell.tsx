@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import type { NavigateFunction } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, Cpu, MessageSquare, Wrench } from "lucide-react";
 
 import { ROOT_NAV_ITEMS } from "../lib/navigation";
 import type { ChannelNav, ModelProviderNav, NavKey } from "../lib/types";
@@ -29,6 +30,11 @@ function navGroupTriggerClass(active: boolean): string {
 function subNavItemClass(active: boolean): string {
   return cn(SUBNAV_ITEM_BASE, active ? SUBNAV_ITEM_ACTIVE : SUBNAV_ITEM_INACTIVE);
 }
+
+const ROOT_NAV_ICONS: Record<string, LucideIcon> = {
+  agents: Bot,
+  tools: Wrench
+};
 
 function NavChevron({ expanded }: { expanded: boolean }) {
   const Icon = expanded ? ChevronDown : ChevronRight;
@@ -101,17 +107,21 @@ export function AppShell({
         <aside className="sticky top-[74px] flex h-fit flex-col gap-3.5 rounded-[14px] border border-border bg-muted/40 p-4 shadow-sm max-lg:static">
           <div className="text-sm font-bold tracking-wide text-foreground">OpenClaw</div>
           <nav className="flex flex-col gap-2 max-lg:grid max-lg:grid-cols-2 max-sm:grid-cols-1">
-            {ROOT_NAV_ITEMS.map((item) => (
-              <Button
-                key={item.key}
-                variant="ghost"
-                className={navItemClass(activeNav === item.key)}
-                onClick={() => onNavigate(item.path)}
-                type="button"
-              >
-                {item.label}
-              </Button>
-            ))}
+            {ROOT_NAV_ITEMS.map((item) => {
+              const Icon = ROOT_NAV_ICONS[item.key];
+              return (
+                <Button
+                  key={item.key}
+                  variant="ghost"
+                  className={navItemClass(activeNav === item.key)}
+                  onClick={() => onNavigate(item.path)}
+                  type="button"
+                >
+                  {Icon && <Icon className="h-4 w-4 shrink-0" />}
+                  {item.label}
+                </Button>
+              );
+            })}
 
             {/* Channels collapsible group */}
             <Collapsible
@@ -125,7 +135,10 @@ export function AppShell({
                   className={navGroupTriggerClass(activeNav === "channels")}
                   type="button"
                 >
-                  <span>Channels</span>
+                  <span className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    Channels
+                  </span>
                   <NavChevron expanded={channelsExpanded} />
                 </Button>
               </CollapsibleTrigger>
@@ -156,7 +169,10 @@ export function AppShell({
                   className={navGroupTriggerClass(activeNav === "models")}
                   type="button"
                 >
-                  <span>Models</span>
+                  <span className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 shrink-0" />
+                    Models
+                  </span>
                   <NavChevron expanded={modelsExpanded} />
                 </Button>
               </CollapsibleTrigger>

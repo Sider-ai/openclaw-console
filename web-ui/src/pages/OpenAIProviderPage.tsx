@@ -2,6 +2,7 @@ import { providerDocsURL } from "../lib/navigation";
 import type { CodexSession, Provider } from "../lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ProviderStatusBadge } from "@/components/ProviderStatusBadge";
 
@@ -42,18 +43,20 @@ export function OpenAIProviderPage({
 }: OpenAIProviderPageProps) {
   return (
     <>
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">OpenAI Provider</h2>
+          <h2 className="text-base font-semibold tracking-tight">OpenAI Provider</h2>
           <a href={providerDocsURL("openai")} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
             Docs
           </a>
         </div>
+        <Separator className="mb-3" />
         <p className="text-sm text-muted-foreground">OpenAI provides two auth methods in OpenClaw Console: API Key and Codex subscription.</p>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Provider Status</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight mb-2">Provider Status</h2>
+        <Separator className="mb-4" />
         <div className="space-y-2">
           <div className="flex items-center justify-between py-2">
             <span className="text-sm">OpenAI API Key</span>
@@ -66,12 +69,13 @@ export function OpenAIProviderPage({
         </div>
         <details className="mt-3">
           <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Raw Provider Status</summary>
-          <pre className="mt-2 text-xs bg-muted rounded p-3 overflow-auto">{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
+          <pre className="mt-2 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify({ openai: openaiProvider, openaiCodex: codexProvider }, null, 2)}</pre>
         </details>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">OpenAI API Key</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight mb-2">OpenAI API Key</h2>
+        <Separator className="mb-4" />
         <div className="flex flex-wrap gap-3 items-end">
           <Input
             className="w-[300px]"
@@ -88,8 +92,9 @@ export function OpenAIProviderPage({
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">OpenAI Codex Subscription</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight mb-2">OpenAI Codex Subscription</h2>
+        <Separator className="mb-4" />
         <div className="flex flex-wrap gap-3 items-end">
           <Button onClick={() => void onStartSession()} disabled={loading || inProgress}>
             Start Session
@@ -128,7 +133,7 @@ export function OpenAIProviderPage({
                 Submit Redirect URL
               </Button>
             </div>
-            <pre className="mt-3 text-xs bg-muted rounded p-3 overflow-auto">{JSON.stringify(codexSession, null, 2)}</pre>
+            <pre className="mt-3 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify(codexSession, null, 2)}</pre>
           </>
         )}
       </section>

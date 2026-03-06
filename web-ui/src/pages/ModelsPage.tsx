@@ -4,6 +4,7 @@ import { formatContextWindow } from "../lib/navigation";
 import type { CatalogEntry, ModelSetting } from "../lib/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 type ModelsPageProps = {
   defaultModelProviderInput: string;
@@ -52,18 +53,20 @@ export function ModelsPage({
 
   return (
     <>
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Models</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <h2 className="text-base font-semibold tracking-tight">Models</h2>
+        <Separator className="my-2" />
         <p className="text-sm text-muted-foreground">Set the global default model used by OpenClaw from available catalog entries.</p>
       </section>
 
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Default Model</h2>
+      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-base font-semibold tracking-tight">Default Model</h2>
           <Button variant="outline" onClick={() => void onRefresh()} disabled={loading}>
             Refresh
           </Button>
         </div>
+        <Separator className="mb-4" />
         <div className="flex flex-wrap gap-3 items-end">
           <Select
             value={defaultModelProviderInput}
@@ -106,7 +109,7 @@ export function ModelsPage({
         <p className="text-sm text-muted-foreground mt-1">Resource: {modelSetting?.name || "modelSettings/default"}</p>
         <details className="mt-3">
           <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Available Model Catalog (raw)</summary>
-          <pre className="mt-2 text-xs bg-muted rounded p-3 overflow-auto">{JSON.stringify(modelOptions, null, 2)}</pre>
+          <pre className="mt-2 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify(modelOptions, null, 2)}</pre>
         </details>
       </section>
     </>

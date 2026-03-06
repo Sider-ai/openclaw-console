@@ -29,7 +29,7 @@ function parseAllowFrom(values: string[]): string[] {
     .filter(Boolean);
 }
 
-export function useTelegramChannel(enabled: boolean, onChanged?: () => Promise<void>) {
+export function useTelegramChannel(enabled: boolean, onChanged?: () => Promise<void>, options?: { requestConfirm?: (msg: string) => Promise<boolean> }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [channel, setChannel] = useState<TelegramChannel | null>(null);
@@ -139,7 +139,9 @@ export function useTelegramChannel(enabled: boolean, onChanged?: () => Promise<v
   }
 
   async function disconnect() {
-    const confirmed = window.confirm("Remove the Telegram bot configuration from OpenClaw?");
+    const confirmed = options?.requestConfirm
+      ? await options.requestConfirm("Remove the Telegram bot configuration from OpenClaw?")
+      : window.confirm("Remove the Telegram bot configuration from OpenClaw?");
     if (!confirmed) {
       return;
     }
