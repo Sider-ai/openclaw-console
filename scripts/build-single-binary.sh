@@ -44,7 +44,7 @@ mkdir -p "$BIN_DIR"
 (
   cd "$ROOT_DIR/admin-api"
   echo "Building target: ${TARGET_OS}/${TARGET_ARCH}"
-  go build -o "$BIN_PATH" ./cmd/server
+  go build -trimpath -ldflags="-s -w" -o "$BIN_PATH" ./cmd/server
 )
 
 echo "Done: $BIN_PATH"

@@ -38,6 +38,8 @@ Build web assets, embed them into `admin-api`, and produce one executable:
 make build
 ```
 
+The release build uses `go build -trimpath -ldflags="-s -w"` to reduce binary size.
+
 Run:
 
 ```bash

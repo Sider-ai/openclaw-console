@@ -26,6 +26,8 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 ./dist/openclaw-console
 ```
 
+The single-binary release build uses `go build -trimpath -ldflags="-s -w"` to reduce binary size.
+
 ## Environment
 
 - `OPENCLAW_HOME` (optional)
