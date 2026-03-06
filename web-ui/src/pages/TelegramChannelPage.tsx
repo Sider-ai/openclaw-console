@@ -1,4 +1,5 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
+import type { Dispatch, KeyboardEvent, SetStateAction } from "react";
 
 import type { TelegramChannel, TelegramChannelTestResult } from "../lib/types";
 
@@ -6,7 +7,7 @@ type TelegramChannelForm = {
   enabled: boolean;
   botToken: string;
   dmPolicy: string;
-  allowFromText: string;
+  allowFrom: string[];
   groupPolicy: string;
   requireMention: boolean;
 };
@@ -38,8 +39,41 @@ export function TelegramChannelPage({
   onDisconnect,
   testResult
 }: TelegramChannelPageProps) {
+  const [allowFromDraft, setAllowFromDraft] = useState("");
   const connectionLabel = channel?.configured ? "Configured" : "Not Configured";
   const connectionClass = channel?.configured ? "status-badge status-badge-connected" : "status-badge status-badge-disconnected";
+
+  function appendAllowFromValues(raw: string) {
+    const values = raw
+      .split(/[\s,]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (values.length === 0) {
+      return;
+    }
+
+    onFormChange((prev) => ({
+      ...prev,
+      allowFrom: [...prev.allowFrom, ...values].filter((value, index, all) => all.indexOf(value) === index)
+    }));
+    setAllowFromDraft("");
+  }
+
+  function removeAllowFromValue(value: string) {
+    onFormChange((prev) => ({
+      ...prev,
+      allowFrom: prev.allowFrom.filter((item) => item !== value)
+    }));
+  }
+
+  function handleAllowFromKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" && event.key !== ",") {
+      return;
+    }
+    event.preventDefault();
+    appendAllowFromValues(allowFromDraft);
+  }
 
   return (
     <>
@@ -116,6 +150,7 @@ export function TelegramChannelPage({
           <span className="field-label">Bot Token</span>
           <span className="muted">Paste the token from BotFather. Leave this blank if you only want to keep the already saved token and update other settings.</span>
           <input
+            className="input-inline"
             onChange={(event) => onFormChange((prev) => ({ ...prev, botToken: event.target.value }))}
             placeholder="123456:ABCDEF..."
             type="password"
@@ -137,12 +172,36 @@ export function TelegramChannelPage({
 
         <label className="field-block">
           <span className="field-label">Allow From</span>
-          <span className="muted">Telegram user IDs allowed to talk to the bot in direct messages. Use numeric Telegram user IDs. Separate multiple IDs with commas or new lines. For <code>open</code> DM policy, set this to <code>*</code>.</span>
-          <textarea
-            onChange={(event) => onFormChange((prev) => ({ ...prev, allowFromText: event.target.value }))}
-            placeholder="123456789&#10;987654321"
-            value={form.allowFromText}
-          />
+          <span className="muted">Telegram user IDs allowed to talk to the bot in direct messages. Add one ID at a time. For <code>open</code> DM policy, add <code>*</code>.</span>
+          <div className="tag-editor">
+            <div className="form-row">
+              <input
+                className="input-inline"
+                onChange={(event) => setAllowFromDraft(event.target.value)}
+                onKeyDown={handleAllowFromKeyDown}
+                placeholder="123456789"
+                type="text"
+                value={allowFromDraft}
+              />
+              <button className="btn btn-secondary" disabled={!allowFromDraft.trim() || loading} onClick={() => appendAllowFromValues(allowFromDraft)} type="button">
+                Add User ID
+              </button>
+            </div>
+            {form.allowFrom.length > 0 ? (
+              <div className="tag-list">
+                {form.allowFrom.map((value) => (
+                  <span className="tag-chip" key={value}>
+                    <span>{value}</span>
+                    <button className="tag-chip-remove" onClick={() => removeAllowFromValue(value)} type="button">
+                      x
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No user IDs added yet.</p>
+            )}
+          </div>
         </label>
 
         <label className="field-block">

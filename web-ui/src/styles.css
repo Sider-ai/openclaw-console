@@ -331,6 +331,15 @@ textarea {
   flex: 1 1 340px;
 }
 
+.input-inline {
+  display: block;
+  width: min(560px, 100%);
+  max-width: 560px;
+  min-height: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+}
+
 select {
   width: auto;
 }
@@ -338,6 +347,42 @@ select {
 textarea {
   min-height: 74px;
   resize: vertical;
+}
+
+.tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: #f9fafb;
+  color: #374151;
+}
+
+.tag-chip-remove {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.tag-chip-remove:hover {
+  color: #111827;
 }
 
 input:focus-visible,

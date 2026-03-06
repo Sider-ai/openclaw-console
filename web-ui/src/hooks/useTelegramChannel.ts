@@ -7,18 +7,24 @@ type TelegramChannelForm = {
   enabled: boolean;
   botToken: string;
   dmPolicy: string;
-  allowFromText: string;
+  allowFrom: string[];
   groupPolicy: string;
   requireMention: boolean;
 };
 
-function allowFromToText(values?: string[]): string {
-  return (values || []).join(", ");
+function normalizeAllowFrom(values: string[]): string[] {
+  return values
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, all) => all.indexOf(value) === index);
 }
 
-function parseAllowFrom(text: string): string[] {
-  return text
-    .split(/[\n,]+/)
+function allowFromToText(values?: string[]): string {
+  return normalizeAllowFrom(values || []).join(", ");
+}
+
+function parseAllowFrom(values: string[]): string[] {
+  return normalizeAllowFrom(values)
     .map((value) => value.trim())
     .filter(Boolean);
 }
@@ -32,7 +38,7 @@ export function useTelegramChannel(enabled: boolean) {
     enabled: true,
     botToken: "",
     dmPolicy: "pairing",
-    allowFromText: "",
+    allowFrom: [],
     groupPolicy: "allowlist",
     requireMention: true
   });
@@ -42,7 +48,7 @@ export function useTelegramChannel(enabled: boolean) {
       enabled: nextChannel.enabled,
       botToken: "",
       dmPolicy: nextChannel.dmPolicy || "pairing",
-      allowFromText: allowFromToText(nextChannel.allowFrom),
+      allowFrom: normalizeAllowFrom(nextChannel.allowFrom || []),
       groupPolicy: nextChannel.groupPolicy || "allowlist",
       requireMention: nextChannel.requireMention
     });
@@ -78,7 +84,7 @@ export function useTelegramChannel(enabled: boolean) {
       channel.dmPolicy !== form.dmPolicy ||
       (channel.groupPolicy || "allowlist") !== form.groupPolicy ||
       channel.requireMention !== form.requireMention ||
-      allowFromToText(channel.allowFrom) !== form.allowFromText.trim()
+      allowFromToText(channel.allowFrom) !== allowFromToText(form.allowFrom)
     );
   }, [channel, form]);
 
@@ -89,7 +95,7 @@ export function useTelegramChannel(enabled: boolean) {
       const payload: Record<string, unknown> = {
         enabled: form.enabled,
         dmPolicy: form.dmPolicy,
-        allowFrom: parseAllowFrom(form.allowFromText),
+        allowFrom: parseAllowFrom(form.allowFrom),
         groupPolicy: form.groupPolicy,
         requireMention: form.requireMention
       };
