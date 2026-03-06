@@ -2,6 +2,8 @@ import { useMemo } from "react";
 
 import { formatContextWindow } from "../lib/navigation";
 import type { CatalogEntry, ModelSetting } from "../lib/types";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ModelsPageProps = {
   defaultModelProviderInput: string;
@@ -50,45 +52,61 @@ export function ModelsPage({
 
   return (
     <>
-      <section className="panel">
-        <h2>Models</h2>
-        <p className="muted">Set the global default model used by OpenClaw from available catalog entries.</p>
+      <section className="rounded-lg border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Models</h2>
+        <p className="text-sm text-muted-foreground">Set the global default model used by OpenClaw from available catalog entries.</p>
       </section>
 
-      <section className="panel">
-        <div className="panel-title-row">
-          <h2>Default Model</h2>
-          <button className="btn btn-secondary" onClick={() => void onRefresh()} disabled={loading}>
+      <section className="rounded-lg border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Default Model</h2>
+          <Button variant="outline" onClick={() => void onRefresh()} disabled={loading}>
             Refresh
-          </button>
+          </Button>
         </div>
-        <div className="form-row">
-          <select value={defaultModelProviderInput} onChange={(e) => onDefaultModelProviderChange(e.target.value)} disabled={loading || providerOptions.length === 0}>
-            {providerOptions.length === 0 && <option value="">No available providers</option>}
-            {providerOptions.map((provider) => (
-              <option key={provider.value} value={provider.value}>
-                {provider.label}
-              </option>
-            ))}
-          </select>
-          <select value={defaultModelInput} onChange={(e) => onDefaultModelChange(e.target.value)} disabled={loading || providerModelOptions.length === 0}>
-            {providerModelOptions.length === 0 && <option value="">No available models</option>}
-            {providerModelOptions.map((entry) => (
-              <option key={entry.modelKey} value={entry.modelKey}>
-                {modelOptionLabel(entry)}
-              </option>
-            ))}
-          </select>
-          <button className="btn" onClick={() => void onUpdateDefaultModel()} disabled={loading || !defaultModelInput.trim() || providerModelOptions.length === 0}>
+        <div className="flex flex-wrap gap-3 items-end">
+          <Select
+            value={defaultModelProviderInput}
+            onValueChange={onDefaultModelProviderChange}
+            disabled={loading || providerOptions.length === 0}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="No available providers" />
+            </SelectTrigger>
+            <SelectContent>
+              {providerOptions.map((provider) => (
+                <SelectItem key={provider.value} value={provider.value}>
+                  {provider.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={defaultModelInput}
+            onValueChange={onDefaultModelChange}
+            disabled={loading || providerModelOptions.length === 0}
+          >
+            <SelectTrigger className="w-[400px]">
+              <SelectValue placeholder="No available models" />
+            </SelectTrigger>
+            <SelectContent>
+              {providerModelOptions.map((entry) => (
+                <SelectItem key={entry.modelKey} value={entry.modelKey}>
+                  {modelOptionLabel(entry)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => void onUpdateDefaultModel()} disabled={loading || !defaultModelInput.trim() || providerModelOptions.length === 0}>
             Set Default Model
-          </button>
+          </Button>
         </div>
-        <p className="muted">Choose a provider first, then select one of its available models. Model format: Display Name | Input | Context Window.</p>
-        {defaultModelUnavailable && <p className="muted">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>}
-        <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
-        <details>
-          <summary>Advanced: Available Model Catalog (raw)</summary>
-          <pre>{JSON.stringify(modelOptions, null, 2)}</pre>
+        <p className="text-sm text-muted-foreground mt-3">Choose a provider first, then select one of its available models. Model format: Display Name | Input | Context Window.</p>
+        {defaultModelUnavailable && <p className="text-sm text-muted-foreground mt-1">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>}
+        <p className="text-sm text-muted-foreground mt-1">Resource: {modelSetting?.name || "modelSettings/default"}</p>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Available Model Catalog (raw)</summary>
+          <pre className="mt-2 text-xs bg-muted rounded p-3 overflow-auto">{JSON.stringify(modelOptions, null, 2)}</pre>
         </details>
       </section>
     </>

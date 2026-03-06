@@ -1,3 +1,5 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 type PlaceholderPageProps = {
   description: string;
   title: string;
@@ -5,9 +7,13 @@ type PlaceholderPageProps = {
 
 export function PlaceholderPage({ description, title }: PlaceholderPageProps) {
   return (
-    <section className="panel">
-      <h2>{title}</h2>
-      <p className="muted">{description}</p>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <CardDescription>{description}</CardDescription>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,8 @@
 import { fallbackProviderLabel, providerDocsURL } from "../lib/navigation";
 import type { ModelProviderNav, Provider } from "../lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ProviderStatusBadge } from "@/components/ProviderStatusBadge";
 
 type ProviderPageProps = {
   apiKey: string;
@@ -11,14 +14,6 @@ type ProviderPageProps = {
   providerNav: ModelProviderNav[];
   providerStatus: Provider | null;
 };
-
-function providerConnectionLabel(provider: Provider | null): "Connected" | "Not Configured" {
-  return provider?.connection === "CONNECTED" ? "Connected" : "Not Configured";
-}
-
-function providerConnectionClass(provider: Provider | null): string {
-  return provider?.connection === "CONNECTED" ? "status-badge status-badge-connected" : "status-badge status-badge-disconnected";
-}
 
 export function ProviderPage({
   apiKey,
@@ -35,41 +30,46 @@ export function ProviderPage({
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-title-row">
-          <h2>{activeProviderLabel} Provider</h2>
-          <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer">
+      <section className="rounded-lg border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">{activeProviderLabel} Provider</h2>
+          <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
             Docs
           </a>
         </div>
-        <p className="muted">
+        <p className="text-sm text-muted-foreground">
           {supportsAPIKey ? "Configure API key authentication for this provider." : "This provider page is read-only for now. You can view provider status."}
         </p>
       </section>
 
-      <section className="panel">
-        <h2>Provider Status</h2>
-        <div className="status-row">
-          <span>{activeProviderLabel}</span>
-          <span className={providerConnectionClass(providerStatus)}>{providerConnectionLabel(providerStatus)}</span>
+      <section className="rounded-lg border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold mb-4">Provider Status</h2>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm">{activeProviderLabel}</span>
+          <ProviderStatusBadge provider={providerStatus} />
         </div>
-        <details>
-          <summary>Advanced: Raw Provider Status</summary>
-          <pre>{JSON.stringify(providerStatus, null, 2)}</pre>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Raw Provider Status</summary>
+          <pre className="mt-2 text-xs bg-muted rounded p-3 overflow-auto">{JSON.stringify(providerStatus, null, 2)}</pre>
         </details>
       </section>
 
       {supportsAPIKey && (
-        <section className="panel">
-          <h2>{activeProviderLabel} API Key</h2>
-          <div className="form-row">
-            <input placeholder="Provider API key" value={apiKey} onChange={(e) => onApiKeyChange(e.target.value)} />
-            <button className="btn" onClick={onConnectAPIKey} disabled={loading || !apiKey.trim()}>
+        <section className="rounded-lg border bg-card p-6 shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">{activeProviderLabel} API Key</h2>
+          <div className="flex flex-wrap gap-3 items-end">
+            <Input
+              className="w-[300px]"
+              placeholder="Provider API key"
+              value={apiKey}
+              onChange={(e) => onApiKeyChange(e.target.value)}
+            />
+            <Button onClick={onConnectAPIKey} disabled={loading || !apiKey.trim()}>
               Connect API Key
-            </button>
-            <button className="btn btn-warn" onClick={onDisconnect} disabled={loading || providerStatus?.connection !== "CONNECTED"}>
+            </Button>
+            <Button variant="destructive" onClick={onDisconnect} disabled={loading || providerStatus?.connection !== "CONNECTED"}>
               Disconnect
-            </button>
+            </Button>
           </div>
         </section>
       )}
