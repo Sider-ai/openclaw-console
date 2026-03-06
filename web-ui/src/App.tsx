@@ -52,12 +52,14 @@ export default function App() {
           path="/models"
           element={
             <ModelsPage
+              defaultModelProviderInput={consoleData.defaultModelProviderInput}
               defaultModelInput={consoleData.defaultModelInput}
               defaultModelUnavailable={consoleData.defaultModelUnavailable}
               loading={consoleData.loading}
               modelOptions={consoleData.modelOptions}
               modelSetting={consoleData.modelSetting}
-              onDefaultModelChange={consoleData.setDefaultModelInput}
+              onDefaultModelChange={consoleData.selectDefaultModel}
+              onDefaultModelProviderChange={consoleData.selectDefaultModelProvider}
               onRefresh={consoleData.refresh}
               onUpdateDefaultModel={consoleData.updateDefaultModel}
               providerLabel={consoleData.providerLabel}

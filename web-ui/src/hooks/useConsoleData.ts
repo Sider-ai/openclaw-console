@@ -5,7 +5,8 @@ import { API_BASE, api } from "../lib/api";
 import {
   buildModelProviderNav,
   fallbackProviderLabel,
-  formatContextWindow
+  formatContextWindow,
+  providerFromModelKey
 } from "../lib/navigation";
 import type {
   CatalogEntry,
@@ -32,6 +33,7 @@ export function useConsoleData(providerRoute: string | null) {
   const [providerStatus, setProviderStatus] = useState<Provider | null>(null);
 
   const [apiKey, setAPIKey] = useState("");
+  const [defaultModelProviderInput, setDefaultModelProviderInput] = useState("");
   const [defaultModelInput, setDefaultModelInput] = useState("");
   const [defaultModelUnavailable, setDefaultModelUnavailable] = useState("");
   const [modelOptions, setModelOptions] = useState<CatalogEntry[]>([]);
@@ -75,6 +77,16 @@ export function useConsoleData(providerRoute: string | null) {
       provider?.connection === "CONNECTED" ? "status-badge status-badge-connected" : "status-badge status-badge-disconnected",
     []
   );
+
+  const syncDefaultModelSelection = useCallback((availableModels: CatalogEntry[], currentDefaultModel: string) => {
+    const currentDefaultEntry = currentDefaultModel ? availableModels.find((entry) => entry.modelKey === currentDefaultModel) : undefined;
+    const fallbackEntry = availableModels[0];
+    const nextSelectedEntry = currentDefaultEntry || fallbackEntry;
+
+    setDefaultModelUnavailable(currentDefaultModel && !currentDefaultEntry ? currentDefaultModel : "");
+    setDefaultModelProviderInput(nextSelectedEntry?.provider || "");
+    setDefaultModelInput(nextSelectedEntry?.modelKey || "");
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -126,9 +138,7 @@ export function useConsoleData(providerRoute: string | null) {
       setModelOptions(availableModels);
 
       const currentDefault = setting.defaultModel || "";
-      const currentDefaultAvailable = !!currentDefault && availableModels.some((entry) => entry.modelKey === currentDefault);
-      setDefaultModelUnavailable(currentDefault && !currentDefaultAvailable ? currentDefault : "");
-      setDefaultModelInput(currentDefaultAvailable ? currentDefault : (availableModels[0]?.modelKey || ""));
+      syncDefaultModelSelection(availableModels, currentDefault);
 
       if (!providerRoute) {
         setOpenaiProvider(null);
@@ -150,7 +160,7 @@ export function useConsoleData(providerRoute: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [navigate, providerRoute]);
+  }, [navigate, providerRoute, syncDefaultModelSelection]);
 
   useEffect(() => {
     void refresh();
@@ -231,6 +241,18 @@ export function useConsoleData(providerRoute: string | null) {
     }
   }
 
+  function selectDefaultModel(modelKey: string) {
+    const providerID = providerFromModelKey(modelKey);
+    setDefaultModelProviderInput(providerID);
+    setDefaultModelInput(modelKey);
+  }
+
+  function selectDefaultModelProvider(providerID: string) {
+    setDefaultModelProviderInput(providerID);
+    const nextModel = modelOptions.find((entry) => entry.provider === providerID)?.modelKey || "";
+    setDefaultModelInput(nextModel);
+  }
+
   async function startCodexSession() {
     setLoading(true);
     setError("");
@@ -293,6 +315,7 @@ export function useConsoleData(providerRoute: string | null) {
     codexProvider,
     codexSession,
     connectAPIKey,
+    defaultModelProviderInput,
     defaultModelInput,
     defaultModelUnavailable,
     disconnectProvider,
@@ -312,7 +335,8 @@ export function useConsoleData(providerRoute: string | null) {
     redirectURL,
     refresh,
     setAPIKey,
-    setDefaultModelInput,
+    selectDefaultModel,
+    selectDefaultModelProvider,
     setModelsExpanded,
     setRedirectURL,
     startCodexSession,
