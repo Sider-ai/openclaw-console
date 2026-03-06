@@ -2,17 +2,17 @@
 .DS_Store
 
 # Frontend dependencies/build outputs
-web-ui/node_modules/
-web-ui/.next/
-web-ui/out/
-web-ui/dist/
+web/node_modules/
+web/.next/
+web/out/
+web/dist/
 /dist/
-admin-api/internal/ui/dist/*
-!admin-api/internal/ui/dist/.keep
+server/internal/ui/dist/*
+!server/internal/ui/dist/.keep
 
 # Frontend env files
-web-ui/.env.local
-web-ui/.env.*.local
+web/.env.local
+web/.env.*.local
 
 # npm/yarn/pnpm debug logs
 npm-debug.log*

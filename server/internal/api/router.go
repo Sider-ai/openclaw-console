@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sider-ai/sider-openclaw-console/admin-api/internal/ui"
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/ui"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )

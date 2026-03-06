@@ -5,7 +5,7 @@ AIP-style resource-oriented console API for OpenClaw model management.
 ## Run
 
 ```bash
-cd admin-api
+cd server
 go run ./cmd/server
 ```
 

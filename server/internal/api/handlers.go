@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sider-ai/sider-openclaw-console/admin-api/internal/openclaw"
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 	"github.com/go-chi/chi/v5"
 )
 

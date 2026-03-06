@@ -6,19 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OpenClaw Console is a monorepo containing:
 
-- `admin-api/` — Go + Chi HTTP API, wraps the local `openclaw` CLI binary
-- `web-ui/` — React + Vite + TypeScript frontend, served as embedded assets in the single binary
+- `server/` — Go + Chi HTTP API, wraps the local `openclaw` CLI binary
+- `web/` — React + Vite + TypeScript frontend, served as embedded assets in the single binary
 - `scripts/` — build helpers
 - `dist/` — build outputs (not committed except for release tasks)
 
-The production artifact is a single self-contained binary (`dist/openclaw-console`) where the Go server embeds the compiled web assets via `//go:embed` from `admin-api/internal/ui/dist/`.
+The production artifact is a single self-contained binary (`dist/openclaw-console`) where the Go server embeds the compiled web assets via `//go:embed` from `server/internal/ui/dist/`.
 
 ## Commands
 
 ### Backend
 
 ```bash
-cd admin-api
+cd server
 go run ./cmd/server           # dev server on :18080
 go test ./...                 # run all tests
 golangci-lint run             # lint
@@ -27,7 +27,7 @@ golangci-lint run             # lint
 ### Frontend
 
 ```bash
-cd web-ui
+cd web
 VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev   # dev server on :3000
 npm run build                 # production build + TypeScript check
 npm run lint                  # ESLint
@@ -41,11 +41,11 @@ make build                    # current platform → dist/openclaw-console
 make build-linux-amd64        # Linux x86_64 → dist/openclaw-console-linux-amd64
 ```
 
-The build script runs `npm ci && npm run build` in `web-ui/`, copies output to `admin-api/internal/ui/dist/`, then `go build` with `-trimpath -ldflags="-s -w"`.
+The build script runs `npm ci && npm run build` in `web/`, copies output to `server/internal/ui/dist/`, then `go build` with `-trimpath -ldflags="-s -w"`.
 
 ## Architecture
 
-### Backend (`admin-api/`)
+### Backend (`server/`)
 
 Layered as `cmd/server` → `internal/api` → `internal/openclaw`:
 
@@ -58,7 +58,7 @@ Layered as `cmd/server` → `internal/api` → `internal/openclaw`:
 
 API is mounted at `/api/v1`. CORS and optional HTTP Basic Auth are applied as middleware in `router.go`.
 
-### Frontend (`web-ui/src/`)
+### Frontend (`web/src/`)
 
 **State architecture** — `App.tsx` is the state hub. It instantiates all data hooks and passes derived state + callbacks down to pages via props. There is no global state library.
 
@@ -79,7 +79,7 @@ Key hooks:
 - Go: `gofmt`, resource-oriented handler names (`ListX`, `GetX`, `PatchX`, `PostX:action`)
 - TypeScript: 2-space indent, strict mode, named exports for pages and components
 - Tailwind: semantic tokens (`bg-card`, `text-muted-foreground`, `border-border`) over raw colors; `rounded-xl ring-1 ring-border/60 shadow-sm` for section cards
-- New shadcn components: install with `npx shadcn@latest add <name>` from `web-ui/`
+- New shadcn components: install with `npx shadcn@latest add <name>` from `web/`
 - Keep `lib/navigation.ts` free of runtime UI dependencies (no Lucide imports)
 - Frontend validation: `npm run build` (TypeScript + bundle) is the authoritative check
 

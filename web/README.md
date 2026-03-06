@@ -11,7 +11,7 @@ Minimal admin UI for:
 ## Run
 
 ```bash
-cd web-ui
+cd web
 npm install
 npm run dev -- --port 3001
 ```
@@ -28,4 +28,4 @@ If you explicitly set `VITE_ADMIN_API_BASE` to a cross-origin API URL, browser a
 npm run build
 ```
 
-Build output is written to `web-ui/dist/` for embedding into the Go binary.
+Build output is written to `web/dist/` for embedding into the Go binary.

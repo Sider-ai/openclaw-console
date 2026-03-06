@@ -1,4 +1,4 @@
-module github.com/Sider-ai/sider-openclaw-console/admin-api
+module github.com/Sider-ai/sider-openclaw-console/server
 
 go 1.26
 

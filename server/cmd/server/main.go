@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Sider-ai/sider-openclaw-console/admin-api/internal/api"
-	"github.com/Sider-ai/sider-openclaw-console/admin-api/internal/openclaw"
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/api"
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 )
 
 func main() {
