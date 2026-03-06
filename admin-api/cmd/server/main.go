@@ -30,7 +30,17 @@ func main() {
 	sessions := openclaw.NewSessionManager(cli, store)
 
 	handler := api.NewHandler(service, sessions)
-	router := api.NewRouter(handler)
+	authUsername := os.Getenv("OPENCLAW_CONSOLE_AUTH_USER")
+	authPassword := os.Getenv("OPENCLAW_CONSOLE_AUTH_PASSWORD")
+	if (authUsername == "") != (authPassword == "") {
+		log.Printf("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
+		authUsername = ""
+		authPassword = ""
+	}
+	router := api.NewRouter(handler, api.RouterConfig{
+		AuthUsername: authUsername,
+		AuthPassword: authPassword,
+	})
 
 	addr := cmp.Or(os.Getenv("OPENCLAW_CONSOLE_ADDR"), ":18080")
 	// submitRedirect can block up to ~95s while waiting for onboard completion,

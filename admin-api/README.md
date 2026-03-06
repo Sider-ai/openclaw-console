@@ -19,6 +19,14 @@ Set custom address:
 OPENCLAW_CONSOLE_ADDR=:19090 go run ./cmd/server
 ```
 
+Enable browser prompt authentication:
+
+```bash
+OPENCLAW_CONSOLE_AUTH_USER=admin \
+OPENCLAW_CONSOLE_AUTH_PASSWORD=change-me \
+go run ./cmd/server
+```
+
 ## Build as One Binary (from repo root)
 
 ```bash
@@ -33,6 +41,8 @@ The single-binary release build uses `go build -trimpath -ldflags="-s -w"` to re
 - `OPENCLAW_HOME` (optional)
 - `OPENCLAW_CONFIG_PATH` (optional)
 - `OPENCLAW_CONSOLE_ADDR` (optional, default `:18080`)
+- `OPENCLAW_CONSOLE_AUTH_USER` (optional, must be set with `OPENCLAW_CONSOLE_AUTH_PASSWORD` to enable HTTP Basic Auth)
+- `OPENCLAW_CONSOLE_AUTH_PASSWORD` (optional, must be set with `OPENCLAW_CONSOLE_AUTH_USER` to enable HTTP Basic Auth)
 - `OPENCLAW_ADMIN_SKIP_RESTART=1` (optional, skip `systemctl restart openclaw`)
 
 ## Resources and Endpoints

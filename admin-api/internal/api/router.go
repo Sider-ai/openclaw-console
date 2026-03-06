@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"time"
@@ -10,12 +11,18 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewRouter(h *Handler) http.Handler {
+type RouterConfig struct {
+	AuthUsername string
+	AuthPassword string
+}
+
+func NewRouter(h *Handler, cfg RouterConfig) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(requestLogger)
 	r.Use(cors)
+	r.Use(basicAuth(cfg))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -59,6 +66,34 @@ func NewRouter(h *Handler) http.Handler {
 	r.NotFound(uiHandler.ServeHTTP)
 
 	return r
+}
+
+func basicAuth(cfg RouterConfig) func(http.Handler) http.Handler {
+	authEnabled := cfg.AuthUsername != "" && cfg.AuthPassword != ""
+
+	return func(next http.Handler) http.Handler {
+		if !authEnabled {
+			return next
+		}
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodOptions || r.URL.Path == "/healthz" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			username, password, ok := r.BasicAuth()
+			if !ok ||
+				subtle.ConstantTimeCompare([]byte(username), []byte(cfg.AuthUsername)) != 1 ||
+				subtle.ConstantTimeCompare([]byte(password), []byte(cfg.AuthPassword)) != 1 {
+				w.Header().Set("WWW-Authenticate", `Basic realm="OpenClaw Console"`)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func requestLogger(next http.Handler) http.Handler {

@@ -13,10 +13,14 @@ Minimal admin UI for:
 ```bash
 cd web-ui
 npm install
-VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev -- --port 3001
+npm run dev -- --port 3001
 ```
 
 Open http://127.0.0.1:3001
+
+By default the Vite dev server proxies `/api` and `/healthz` to `http://127.0.0.1:18080`, which keeps local development compatible with console HTTP Basic Auth.
+
+If you explicitly set `VITE_ADMIN_API_BASE` to a cross-origin API URL, browser auth prompt behavior is not guaranteed.
 
 ## Static Build Output
 

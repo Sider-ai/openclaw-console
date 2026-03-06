@@ -28,39 +28,34 @@ VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev
 - Web UI: `http://127.0.0.1:3000`
 - Admin API health: `http://127.0.0.1:18080/healthz`
 
-## Single Binary Build
-
-Build web assets, embed them into `admin-api`, and produce one executable:
+## Build
 
 ```bash
-./scripts/build-single-binary.sh
-# or:
 make build
+make build-linux-amd64 # for linux amd64
 ```
 
-The release build uses `go build -trimpath -ldflags="-s -w"` to reduce binary size.
-
-Run:
+## Run
 
 ```bash
 ./dist/openclaw-console
 ```
 
-Then open `http://127.0.0.1:18080` (Web UI) and `http://127.0.0.1:18080/healthz`.
+Server defaults:
 
-Build Linux `x86_64` binary:
+- Web UI: `http://127.0.0.1:18080`
+- Health: `http://127.0.0.1:18080/healthz`
 
-```bash
-GOOS=linux GOARCH=amd64 ./scripts/build-single-binary.sh
-# or:
-make build-linux-amd64
-```
+Configurable environment variables:
 
-Output:
-
-```bash
-./dist/openclaw-console-linux-amd64
-```
+| Environment Variable | Default | Description |
+| --- | --- | --- |
+| `OPENCLAW_HOME` | OpenClaw default home directory | Overrides the OpenClaw home directory used by the console. |
+| `OPENCLAW_CONFIG_PATH` | OpenClaw default config path | Overrides the OpenClaw config file path used by the console. |
+| `OPENCLAW_CONSOLE_ADDR` | `:18080` | Sets the console listen address. |
+| `OPENCLAW_CONSOLE_AUTH_USER` | empty | Enables HTTP Basic Auth only when set together with `OPENCLAW_CONSOLE_AUTH_PASSWORD`. |
+| `OPENCLAW_CONSOLE_AUTH_PASSWORD` | empty | Enables HTTP Basic Auth only when set together with `OPENCLAW_CONSOLE_AUTH_USER`. |
+| `OPENCLAW_ADMIN_SKIP_RESTART` | empty | Set to `1` to skip `systemctl restart openclaw` after config changes. |
 
 ## Validation
 
