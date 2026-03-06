@@ -34,7 +34,9 @@ Canonical machine-readable spec: `openapi.yaml`
 
 ### ModelCatalogEntries
 
-- `GET /api/v1/modelCatalogEntries?provider={provider}&page_size=&page_token=`
+- `GET /api/v1/modelCatalogEntries`
+  - Snapshot mode (all available models): no query params needed.
+  - Provider mode (paged): `?provider={provider}&page_size=&page_token=`
 
 ## Notes
 

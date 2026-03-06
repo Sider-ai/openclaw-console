@@ -44,7 +44,8 @@ OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
 - `POST /api/v1/auth:reset`
 - `GET /api/v1/providers/{provider}/authProfiles`
 - `GET /api/v1/providers/{provider}/authProfiles/{auth_profile}`
-- `GET /api/v1/modelCatalogEntries?provider={provider}&page_size=&page_token=`
+- `GET /api/v1/modelCatalogEntries` (snapshot of available models)
+- `GET /api/v1/modelCatalogEntries?provider={provider}&page_size=&page_token=` (provider-scoped pagination)
 - `POST /api/v1/codexAuthSessions`
 - `GET /api/v1/codexAuthSessions/{codex_auth_session}`
 - `POST /api/v1/codexAuthSessions/{codex_auth_session}:submitRedirect`

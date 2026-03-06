@@ -236,12 +236,17 @@ paths:
       tags: [ModelCatalogEntries]
       operationId: listModelCatalogEntries
       summary: List model catalog entries
+      description: |
+        Dual-mode endpoint:
+        - with `provider`: paged catalog entries for that provider.
+        - without `provider`: full available-model snapshot across providers.
       parameters:
         - name: provider
           in: query
-          required: true
+          required: false
           schema:
             type: string
+          description: Provider ID. If omitted, returns full available-model snapshot.
         - name: page_size
           in: query
           required: false
@@ -250,16 +255,16 @@ paths:
             minimum: 1
             maximum: 200
             default: 50
-          description: Requested page size. Values >200 are clamped to 200 by the server.
+          description: Requested page size (provider mode only). Values >200 are clamped to 200 by the server.
         - name: page_token
           in: query
           required: false
           schema:
             type: string
-          description: Opaque pagination token returned by previous call.
+          description: Opaque pagination token (provider mode only).
       responses:
         '200':
-          description: Paged model catalog entries
+          description: Model catalog entries
           content:
             application/json:
               schema:

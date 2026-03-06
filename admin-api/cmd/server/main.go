@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +20,12 @@ func main() {
 	store := openclaw.NewStore(paths)
 	cli := openclaw.NewCLI(paths)
 	service := openclaw.NewService(cli, store)
+	warmupCtx, warmupCancel := context.WithTimeout(context.Background(), 45*time.Second)
+	if err := service.Warmup(warmupCtx); err != nil {
+		log.Printf("openclaw metadata warmup failed: %v", err)
+	}
+	warmupCancel()
+	service.StartBackground(context.Background())
 	sessions := openclaw.NewSessionManager(cli, store)
 
 	handler := api.NewHandler(service, sessions)

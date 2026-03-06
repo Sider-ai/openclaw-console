@@ -3,29 +3,49 @@ package openclaw
 import (
 	"context"
 	"fmt"
-	"slices"
-	"sort"
 	"strings"
 )
 
 type Service struct {
 	cli   *CLI
 	store *Store
+	cache *serviceCache
 }
 
 func NewService(cli *CLI, store *Store) *Service {
-	return &Service{cli: cli, store: store}
+	return &Service{
+		cli:   cli,
+		store: store,
+		cache: newServiceCache(cli),
+	}
+}
+
+func (s *Service) Warmup(ctx context.Context) error {
+	return s.cache.Warmup(ctx)
+}
+
+func (s *Service) StartBackground(ctx context.Context) {
+	s.cache.Start(ctx)
+}
+
+func (s *Service) triggerCacheRefresh(reason string) {
+	s.cache.TriggerRefresh(reason)
+}
+
+func (s *Service) refreshCacheSync(ctx context.Context, reason string) error {
+	if err := s.cache.Warmup(ctx); err != nil {
+		s.triggerCacheRefresh(reason)
+		return err
+	}
+	return nil
 }
 
 func (s *Service) GetModelSetting(ctx context.Context) (ModelSettingResource, error) {
-	status, err := s.cli.ModelsStatus(ctx)
+	snapshot, err := s.cache.Snapshot(ctx)
 	if err != nil {
 		return ModelSettingResource{}, err
 	}
-	return ModelSettingResource{
-		Name:         "modelSettings/default",
-		DefaultModel: status.DefaultModel,
-	}, nil
+	return snapshot.modelSetting, nil
 }
 
 func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (ModelSettingResource, error) {
@@ -35,61 +55,21 @@ func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (
 	if err := s.cli.SetDefaultModel(ctx, defaultModel); err != nil {
 		return ModelSettingResource{}, err
 	}
+	if err := s.refreshCacheSync(ctx, "set-default-model"); err != nil {
+		return ModelSettingResource{}, err
+	}
 	return s.GetModelSetting(ctx)
 }
 
 func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummaryResource, error) {
-	providerSet := map[string]struct{}{}
-
-	list, err := s.cli.ModelsList(ctx, "")
+	snapshot, err := s.cache.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, model := range list.Models {
-		provider := providerFromModelKey(model.Key)
-		if provider == "" {
-			continue
-		}
-		providerSet[provider] = struct{}{}
-	}
 
-	status, err := s.cli.ModelsStatus(ctx)
-	if err == nil {
-		for _, item := range status.Auth.Providers {
-			if strings.TrimSpace(item.Provider) == "" {
-				continue
-			}
-			providerSet[strings.TrimSpace(item.Provider)] = struct{}{}
-		}
-		for _, item := range status.Auth.ProvidersWithOAuth {
-			if strings.TrimSpace(item) == "" {
-				continue
-			}
-			providerSet[strings.TrimSpace(item)] = struct{}{}
-		}
-		for _, item := range status.Auth.MissingProvidersInUse {
-			if strings.TrimSpace(item) == "" {
-				continue
-			}
-			providerSet[strings.TrimSpace(item)] = struct{}{}
-		}
-	}
-
-	providerIDs := make([]string, 0, len(providerSet))
-	for provider := range providerSet {
-		providerIDs = append(providerIDs, provider)
-	}
-	sort.Strings(providerIDs)
-
-	out := make([]ProviderSummaryResource, 0, len(providerIDs))
-	for _, provider := range providerIDs {
-		out = append(out, ProviderSummaryResource{
-			Name:           "providers/" + provider,
-			ProviderID:     provider,
-			DisplayName:    providerDisplayName(provider),
-			SupportsAPIKey: supportsAPIKeyProvider(provider),
-			Managed:        isManagedProvider(provider),
-		})
+	out := make([]ProviderSummaryResource, 0, len(snapshot.providers))
+	for _, provider := range snapshot.providers {
+		out = append(out, provider)
 	}
 	return out, nil
 }
@@ -99,42 +79,19 @@ func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderRes
 	if provider == "" {
 		return ProviderResource{}, fmt.Errorf("provider is required")
 	}
-	status, err := s.cli.ModelsStatus(ctx)
+
+	snapshot, err := s.cache.Snapshot(ctx)
 	if err != nil {
 		return ProviderResource{}, err
 	}
 
-	resource := ProviderResource{
-		Name:           "providers/" + provider,
-		ProviderID:     provider,
-		SupportsAPIKey: supportsAPIKeyProvider(provider),
-		Connection:     "NOT_CONFIGURED",
-		AuthType:       "NONE",
+	item, ok := snapshot.providerByID[provider]
+	if !ok {
+		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
 	}
-
-	for _, p := range status.Auth.Providers {
-		if p.Provider != provider {
-			continue
-		}
-		resource.ProfileLabels = append(resource.ProfileLabels, p.Profiles.Labels...)
-		switch {
-		case p.Profiles.OAuth > 0:
-			resource.Connection = "CONNECTED"
-			resource.AuthType = "OAUTH"
-		case p.Profiles.APIKey > 0:
-			resource.Connection = "CONNECTED"
-			resource.AuthType = "API_KEY"
-		case p.Profiles.Token > 0:
-			resource.Connection = "CONNECTED"
-			resource.AuthType = "TOKEN"
-		}
-	}
-
-	if slices.Contains(status.Auth.MissingProvidersInUse, provider) {
-		resource.MissingInUse = true
-	}
-	resource.OAuthProviders = append(resource.OAuthProviders, status.Auth.ProvidersWithOAuth...)
-	return resource, nil
+	item.ProfileLabels = append([]string(nil), item.ProfileLabels...)
+	item.OAuthProviders = append([]string(nil), item.OAuthProviders...)
+	return item, nil
 }
 
 func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, apiKey string) (ProviderResource, error) {
@@ -151,11 +108,10 @@ func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, ap
 	if err := s.store.UpsertProviderAPIKey(ctx, provider, apiKey); err != nil {
 		return ProviderResource{}, err
 	}
-	providerRes, err := s.GetProvider(ctx, provider)
-	if err != nil {
+	if err := s.refreshCacheSync(ctx, "connect-api-key"); err != nil {
 		return ProviderResource{}, err
 	}
-	return providerRes, nil
+	return s.GetProvider(ctx, provider)
 }
 
 func (s *Service) DisconnectProvider(ctx context.Context, provider string) (ProviderResource, error) {
@@ -163,6 +119,9 @@ func (s *Service) DisconnectProvider(ctx context.Context, provider string) (Prov
 		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
 	}
 	if err := s.store.DisconnectProvider(ctx, provider); err != nil {
+		return ProviderResource{}, err
+	}
+	if err := s.refreshCacheSync(ctx, "disconnect-provider"); err != nil {
 		return ProviderResource{}, err
 	}
 	return s.GetProvider(ctx, provider)
@@ -176,7 +135,12 @@ func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) 
 	if !isSupportedResetProvider(provider) {
 		return AuthResetResult{}, fmt.Errorf("unsupported provider: %s", provider)
 	}
-	return s.store.ResetAuth(ctx, provider, restart, s.cli)
+	result, err := s.store.ResetAuth(ctx, provider, restart, s.cli)
+	if err != nil {
+		return AuthResetResult{}, err
+	}
+	_ = s.refreshCacheSync(ctx, "reset-auth")
+	return result, nil
 }
 
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
@@ -191,6 +155,19 @@ func (s *Service) GetAuthProfile(provider, profileID string) (*ProfileResource, 
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
 	return s.store.GetAuthProfile(provider, profileID)
+}
+
+func (s *Service) ListModelCatalogSnapshot(ctx context.Context) ([]ModelCatalogEntryResource, error) {
+	snapshot, err := s.cache.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ModelCatalogEntryResource, 0, len(snapshot.availableModelCatalog))
+	for _, item := range snapshot.availableModelCatalog {
+		item.Tags = append([]string(nil), item.Tags...)
+		out = append(out, item)
+	}
+	return out, nil
 }
 
 func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageToken string, pageSize int) ([]ModelCatalogEntryResource, string, error) {
@@ -209,35 +186,31 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 		return nil, "", err
 	}
 
-	list, err := s.cli.ModelsList(ctx, provider)
+	snapshot, err := s.cache.Snapshot(ctx)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if offset >= len(list.Models) {
+	if _, known := snapshot.providerIDs[provider]; !known {
+		return nil, "", fmt.Errorf("unsupported provider: %s", provider)
+	}
+	items := snapshot.modelCatalogByProvider[provider]
+	if offset >= len(items) {
 		return []ModelCatalogEntryResource{}, "", nil
 	}
-	end := min(offset+pageSize, len(list.Models))
+	end := min(offset+pageSize, len(items))
 
-	entries := make([]ModelCatalogEntryResource, 0, end-offset)
-	for _, m := range list.Models[offset:end] {
-		entries = append(entries, ModelCatalogEntryResource{
-			Name:          "modelCatalogEntries/" + sanitizeModelKey(m.Key),
-			ModelKey:      m.Key,
-			DisplayName:   m.Name,
-			Provider:      provider,
-			Input:         m.Input,
-			ContextWindow: m.ContextWindow,
-			Available:     m.Available,
-			Tags:          m.Tags,
-		})
+	out := make([]ModelCatalogEntryResource, 0, end-offset)
+	for _, item := range items[offset:end] {
+		item.Tags = append([]string(nil), item.Tags...)
+		out = append(out, item)
 	}
 
 	next := ""
-	if end < len(list.Models) {
+	if end < len(items) {
 		next = EncodePageToken(end)
 	}
-	return entries, next, nil
+	return out, next, nil
 }
 
 func isManagedProvider(provider string) bool {
@@ -343,4 +316,41 @@ func humanizeProviderID(provider string) string {
 		words[i] = strings.ToUpper(word[:1]) + word[1:]
 	}
 	return strings.Join(words, " ")
+}
+
+func isCanonicalProviderID(provider string) bool {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return false
+	}
+	for i := 0; i < len(provider); i++ {
+		ch := provider[i]
+		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isKnownProvider(provider string) bool {
+	switch provider {
+	case "amazon-bedrock", "github-copilot", "openai-codex":
+		return true
+	default:
+		return supportsAPIKeyProvider(provider)
+	}
+}
+
+func isWhitelistedProviderID(provider string, discovered map[string]struct{}) bool {
+	provider = strings.TrimSpace(provider)
+	if !isCanonicalProviderID(provider) {
+		return false
+	}
+	if discovered != nil {
+		if _, ok := discovered[provider]; ok {
+			return true
+		}
+	}
+	return isKnownProvider(provider)
 }
