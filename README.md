@@ -3,7 +3,7 @@
 OpenClaw Console monorepo:
 
 - `admin-api/`: Go + Chi admin API (AIP-style resource-oriented design)
-- `web-ui/`: Next.js web console for models/providers/session auth flows
+- `web-ui/`: React + Vite web console for models/providers/session auth flows
 - `scripts/`: operational helper scripts
 
 ## Quick Start
@@ -20,7 +20,7 @@ go run ./cmd/server
 ```bash
 cd web-ui
 npm install
-NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev
+VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev
 ```
 
 3. Open:

@@ -5,6 +5,7 @@
 web-ui/node_modules/
 web-ui/.next/
 web-ui/out/
+web-ui/dist/
 /dist/
 admin-api/internal/ui/dist/*
 !admin-api/internal/ui/dist/.keep

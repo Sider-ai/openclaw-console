@@ -1,6 +1,5 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 type ModelSetting = {
   name: string;
@@ -51,15 +50,14 @@ type CodexSession = {
 };
 
 type NavKey = "agents" | "channels" | "tools" | "models";
-const MODEL_DEFAULTS_NODE = "__model_defaults__";
 
-const API_BASE = (process.env.NEXT_PUBLIC_ADMIN_API_BASE || "/api").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_ADMIN_API_BASE || "/api").replace(/\/$/, "");
 const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
 
-const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models">; label: string }[] = [
-  { key: "agents", label: "Agents" },
-  { key: "channels", label: "Channels" },
-  { key: "tools", label: "Tools" }
+const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models">; label: string; path: string }[] = [
+  { key: "agents", label: "Agents", path: "/agents" },
+  { key: "channels", label: "Channels", path: "/channels" },
+  { key: "tools", label: "Tools", path: "/tools" }
 ];
 
 function fallbackProviderLabel(providerId: string): string {
@@ -95,10 +93,6 @@ function buildModelProviderNav(providers: ProviderSummary[]): ModelProviderNav[]
     });
   });
 
-  if (out.length === 0) {
-    out.push({ id: "openai", label: "OpenAI" });
-  }
-
   return out;
 }
 
@@ -109,16 +103,55 @@ function providerDocsURL(provider: string): string {
   return DOCS_PROVIDER_ROOT;
 }
 
-export default function Page() {
-  const [activeNav, setActiveNav] = useState<NavKey>("models");
-  const [modelsExpanded, setModelsExpanded] = useState(false);
+function providerRouteFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/models\/providers\/([^/]+)\/?$/);
+  if (!match) {
+    return null;
+  }
+  return decodeURIComponent(match[1]);
+}
+
+function navFromPath(pathname: string): NavKey {
+  if (pathname.startsWith("/agents")) {
+    return "agents";
+  }
+  if (pathname.startsWith("/channels")) {
+    return "channels";
+  }
+  if (pathname.startsWith("/tools")) {
+    return "tools";
+  }
+  return "models";
+}
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {})
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error((data as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`);
+  }
+  return data as T;
+}
+
+export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const providerRoute = providerRouteFromPath(location.pathname);
+  const activeNav = navFromPath(location.pathname);
+
+  const [modelsExpanded, setModelsExpanded] = useState(activeNav === "models");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [modelSetting, setModelSetting] = useState<ModelSetting | null>(null);
   const [providerSummaries, setProviderSummaries] = useState<ProviderSummary[]>([]);
   const [providerNav, setProviderNav] = useState<ModelProviderNav[]>([]);
-  const [activeModelProvider, setActiveModelProvider] = useState(MODEL_DEFAULTS_NODE);
 
   const [openaiProvider, setOpenaiProvider] = useState<Provider | null>(null);
   const [codexProvider, setCodexProvider] = useState<Provider | null>(null);
@@ -127,11 +160,16 @@ export default function Page() {
   const [apiKey, setApiKey] = useState("");
   const [defaultModelInput, setDefaultModelInput] = useState("");
   const [defaultModelUnavailable, setDefaultModelUnavailable] = useState("");
-
   const [modelOptions, setModelOptions] = useState<CatalogEntry[]>([]);
 
   const [codexSession, setCodexSession] = useState<CodexSession | null>(null);
   const [redirectURL, setRedirectURL] = useState("");
+
+  useEffect(() => {
+    if (activeNav === "models") {
+      setModelsExpanded(true);
+    }
+  }, [activeNav]);
 
   const inProgress = useMemo(() => {
     if (!codexSession) {
@@ -141,29 +179,6 @@ export default function Page() {
       codexSession.state
     );
   }, [codexSession]);
-
-  const activeProviderLabel = useMemo(() => {
-    if (activeModelProvider === MODEL_DEFAULTS_NODE) {
-      return "Models";
-    }
-    const item = providerNav.find((it) => it.id === activeModelProvider);
-    return item?.label || fallbackProviderLabel(activeModelProvider);
-  }, [providerNav, activeModelProvider]);
-
-  async function api<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers || {})
-      }
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data?.error?.message || `HTTP ${res.status}`);
-    }
-    return data as T;
-  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -184,8 +199,14 @@ export default function Page() {
       const nextProviderNav = buildModelProviderNav(nextProviders);
       setProviderNav(nextProviderNav);
 
-      if (activeModelProvider !== MODEL_DEFAULTS_NODE && !nextProviderNav.some((item) => item.id === activeModelProvider)) {
-        setActiveModelProvider(MODEL_DEFAULTS_NODE);
+      const hasOpenAI = nextProviderNav.some((item) => item.id === "openai");
+      if (providerRoute === "openai" && !hasOpenAI) {
+        navigate("/models", { replace: true });
+        return;
+      }
+      if (providerRoute && providerRoute !== "openai" && !nextProviderNav.some((item) => item.id === providerRoute)) {
+        navigate("/models", { replace: true });
+        return;
       }
 
       const providerLabelByID = new Map<string, string>();
@@ -213,28 +234,27 @@ export default function Page() {
       setDefaultModelUnavailable(currentDefault && !currentDefaultAvailable ? currentDefault : "");
       setDefaultModelInput(currentDefaultAvailable ? currentDefault : (availableModels[0]?.modelKey || ""));
 
-      if (activeModelProvider === MODEL_DEFAULTS_NODE) {
+      if (!providerRoute) {
         setOpenaiProvider(null);
         setCodexProvider(null);
         setProviderStatus(null);
-      } else if (activeModelProvider === "openai") {
+      } else if (providerRoute === "openai") {
         const [openai, codex] = await Promise.all([api<Provider>("/v1/providers/openai"), api<Provider>("/v1/providers/openai-codex")]);
         setOpenaiProvider(openai);
         setCodexProvider(codex);
         setProviderStatus(null);
       } else {
-        const status = await api<Provider>(`/v1/providers/${encodeURIComponent(activeModelProvider)}`);
+        const status = await api<Provider>(`/v1/providers/${encodeURIComponent(providerRoute)}`);
         setProviderStatus(status);
         setOpenaiProvider(null);
         setCodexProvider(null);
       }
-
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [activeModelProvider]);
+  }, [navigate, providerRoute]);
 
   useEffect(() => {
     void refresh();
@@ -286,7 +306,7 @@ export default function Page() {
     setLoading(true);
     setError("");
     try {
-      await api(`/v1/providers/${providerID}:disconnect`, {
+      await api(`/v1/providers/${encodeURIComponent(providerID)}:disconnect`, {
         method: "POST",
         body: JSON.stringify({})
       });
@@ -409,38 +429,45 @@ export default function Page() {
     return provider?.connection === "CONNECTED" ? "status-badge status-badge-connected" : "status-badge status-badge-disconnected";
   }
 
-  function renderModelDefaultsSection() {
+  function renderModelDefaultsWorkspace() {
     return (
-      <section className="panel">
-        <div className="panel-title-row">
-          <h2>Default Model</h2>
-          <button className="btn btn-secondary" onClick={refresh} disabled={loading}>
-            Refresh
-          </button>
-        </div>
-        <div className="form-row">
-          <select value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} disabled={loading || modelOptions.length === 0}>
-            {modelOptions.length === 0 && <option value="">No available models</option>}
-            {modelOptions.map((entry) => (
-              <option key={`${entry.provider}:${entry.modelKey}`} value={entry.modelKey}>
-                {modelOptionLabel(entry)}
-              </option>
-            ))}
-          </select>
-          <button className="btn" onClick={updateDefaultModel} disabled={loading || !defaultModelInput.trim() || modelOptions.length === 0}>
-            Set Default Model
-          </button>
-        </div>
-        <p className="muted">Only available models are listed. Format: Provider | Display Name | Input | Context Window.</p>
-        {defaultModelUnavailable && (
-          <p className="muted">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>
-        )}
-        <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
-        <details>
-          <summary>Advanced: Available Model Catalog (raw)</summary>
-          <pre>{JSON.stringify(modelOptions, null, 2)}</pre>
-        </details>
-      </section>
+      <>
+        <section className="panel">
+          <h2>Models</h2>
+          <p className="muted">Set the global default model used by OpenClaw from available catalog entries.</p>
+        </section>
+
+        <section className="panel">
+          <div className="panel-title-row">
+            <h2>Default Model</h2>
+            <button className="btn btn-secondary" onClick={() => void refresh()} disabled={loading}>
+              Refresh
+            </button>
+          </div>
+          <div className="form-row">
+            <select value={defaultModelInput} onChange={(e) => setDefaultModelInput(e.target.value)} disabled={loading || modelOptions.length === 0}>
+              {modelOptions.length === 0 && <option value="">No available models</option>}
+              {modelOptions.map((entry) => (
+                <option key={`${entry.provider}:${entry.modelKey}`} value={entry.modelKey}>
+                  {modelOptionLabel(entry)}
+                </option>
+              ))}
+            </select>
+            <button className="btn" onClick={() => void updateDefaultModel()} disabled={loading || !defaultModelInput.trim() || modelOptions.length === 0}>
+              Set Default Model
+            </button>
+          </div>
+          <p className="muted">Only available models are listed. Format: Provider | Display Name | Input | Context Window.</p>
+          {defaultModelUnavailable && (
+            <p className="muted">Current default model is unavailable and not listed: {defaultModelUnavailable}</p>
+          )}
+          <p className="muted">Resource: {modelSetting?.name || "modelSettings/default"}</p>
+          <details>
+            <summary>Advanced: Available Model Catalog (raw)</summary>
+            <pre>{JSON.stringify(modelOptions, null, 2)}</pre>
+          </details>
+        </section>
+      </>
     );
   }
 
@@ -503,10 +530,10 @@ export default function Page() {
         <section className="panel">
           <h2>OpenAI Codex Subscription</h2>
           <div className="form-row compact">
-            <button className="btn" onClick={startCodexSession} disabled={loading || inProgress}>
+            <button className="btn" onClick={() => void startCodexSession()} disabled={loading || inProgress}>
               Start Session
             </button>
-            <button className="btn btn-warn" onClick={cancelSession} disabled={loading || !codexSession}>
+            <button className="btn btn-warn" onClick={() => void cancelSession()} disabled={loading || !codexSession}>
               Cancel Session
             </button>
             <button
@@ -538,7 +565,7 @@ export default function Page() {
                 onChange={(e) => setRedirectURL(e.target.value)}
               />
               <div className="form-row compact">
-                <button className="btn" onClick={submitRedirect} disabled={loading || !redirectURL.trim()}>
+                <button className="btn" onClick={() => void submitRedirect()} disabled={loading || !redirectURL.trim()}>
                   Submit Redirect URL
                 </button>
               </div>
@@ -550,14 +577,16 @@ export default function Page() {
     );
   }
 
-  function renderReadOnlyProviderWorkspace() {
+  function renderReadOnlyProviderWorkspace(providerID: string) {
     const supportsAPIKey = providerStatus?.supportsApiKey === true;
+    const activeProviderLabel = providerNav.find((item) => item.id === providerID)?.label || fallbackProviderLabel(providerID);
+
     return (
       <>
         <section className="panel">
           <div className="panel-title-row">
             <h2>{activeProviderLabel} Provider</h2>
-            <a href={providerDocsURL(activeModelProvider)} target="_blank" rel="noreferrer">
+            <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer">
               Docs
             </a>
           </div>
@@ -586,7 +615,7 @@ export default function Page() {
               <button
                 className="btn"
                 onClick={() => {
-                  void connectAPIKey(activeModelProvider);
+                  void connectAPIKey(providerID);
                 }}
                 disabled={loading || !apiKey.trim()}
               >
@@ -595,7 +624,7 @@ export default function Page() {
               <button
                 className="btn btn-warn"
                 onClick={() => {
-                  void disconnectProvider(activeModelProvider);
+                  void disconnectProvider(providerID);
                 }}
                 disabled={loading || providerStatus?.connection !== "CONNECTED"}
               >
@@ -606,28 +635,6 @@ export default function Page() {
         )}
       </>
     );
-  }
-
-  function renderModelDefaultsWorkspace() {
-    return (
-      <>
-        <section className="panel">
-          <h2>Models</h2>
-          <p className="muted">Set the global default model used by OpenClaw from available catalog entries.</p>
-        </section>
-        {renderModelDefaultsSection()}
-      </>
-    );
-  }
-
-  function renderModelsWorkspace() {
-    if (activeModelProvider === MODEL_DEFAULTS_NODE) {
-      return renderModelDefaultsWorkspace();
-    }
-    if (activeModelProvider === "openai") {
-      return renderOpenAIWorkspace();
-    }
-    return renderReadOnlyProviderWorkspace();
   }
 
   return (
@@ -653,8 +660,8 @@ export default function Page() {
             {ROOT_NAV_ITEMS.map((item) => (
               <button
                 key={item.key}
-                className={item.key === activeNav ? "nav-item nav-item-active" : "nav-item"}
-                onClick={() => setActiveNav(item.key)}
+                className={activeNav === item.key ? "nav-item nav-item-active" : "nav-item"}
+                onClick={() => navigate(item.path)}
                 type="button"
               >
                 {item.label}
@@ -665,9 +672,12 @@ export default function Page() {
               <button
                 className={activeNav === "models" ? "nav-item nav-item-active" : "nav-item"}
                 onClick={() => {
-                  setActiveNav("models");
-                  setActiveModelProvider(MODEL_DEFAULTS_NODE);
-                  setModelsExpanded((prev) => !prev);
+                  if (activeNav === "models") {
+                    setModelsExpanded((prev) => !prev);
+                  } else {
+                    navigate("/models");
+                    setModelsExpanded(true);
+                  }
                 }}
                 type="button"
               >
@@ -677,15 +687,18 @@ export default function Page() {
 
               {modelsExpanded && (
                 <div className="subnav-list">
+                  <button
+                    className={location.pathname === "/models" ? "subnav-item subnav-item-active" : "subnav-item"}
+                    onClick={() => navigate("/models")}
+                    type="button"
+                  >
+                    Default Model
+                  </button>
                   {providerNav.map((item) => (
                     <button
                       key={item.id}
-                      className={activeNav === "models" && activeModelProvider === item.id ? "subnav-item subnav-item-active" : "subnav-item"}
-                      onClick={() => {
-                        setActiveNav("models");
-                        setModelsExpanded(true);
-                        setActiveModelProvider(item.id);
-                      }}
+                      className={providerRoute === item.id ? "subnav-item subnav-item-active" : "subnav-item"}
+                      onClick={() => navigate(`/models/providers/${encodeURIComponent(item.id)}`)}
                       type="button"
                     >
                       {item.label}
@@ -706,10 +719,28 @@ export default function Page() {
             </section>
           )}
 
-          {activeNav === "models" && renderModelsWorkspace()}
-          {activeNav === "agents" && renderPlaceholder("Agents", "Agent resources will be managed here. API hooks can be added in the next iteration.")}
-          {activeNav === "channels" && renderPlaceholder("Channels", "Channel resources (Telegram, Slack, etc.) will be configured here.")}
-          {activeNav === "tools" && renderPlaceholder("Tools", "Tool resources and policy controls will be managed here.")}
+          <Routes>
+            <Route path="/" element={<Navigate to="/models" replace />} />
+            <Route path="/models" element={renderModelDefaultsWorkspace()} />
+            <Route path="/models/providers/openai" element={renderOpenAIWorkspace()} />
+            <Route
+              path="/models/providers/:providerId"
+              element={providerRoute && providerRoute !== "openai" ? renderReadOnlyProviderWorkspace(providerRoute) : <Navigate to="/models" replace />}
+            />
+            <Route
+              path="/agents"
+              element={renderPlaceholder("Agents", "Agent resources will be managed here. API hooks can be added in the next iteration.")}
+            />
+            <Route
+              path="/channels"
+              element={renderPlaceholder("Channels", "Channel resources (Telegram, Slack, etc.) will be configured here.")}
+            />
+            <Route
+              path="/tools"
+              element={renderPlaceholder("Tools", "Tool resources and policy controls will be managed here.")}
+            />
+            <Route path="*" element={<Navigate to="/models" replace />} />
+          </Routes>
         </main>
       </div>
     </div>
