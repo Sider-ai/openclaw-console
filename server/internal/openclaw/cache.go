@@ -21,6 +21,7 @@ type serviceSnapshot struct {
 	providerIDs            map[string]struct{}
 	modelCatalogByProvider map[string][]ModelCatalogEntryResource
 	availableModelCatalog  []ModelCatalogEntryResource
+	plugins                pluginsList
 }
 
 type serviceCache struct {
@@ -103,7 +104,12 @@ func (c *serviceCache) refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	plugins, err := c.cli.PluginsList(ctx)
+	if err != nil {
+		return err
+	}
 	next := buildServiceSnapshot(status, list)
+	next.plugins = plugins
 	c.mu.Lock()
 	c.snapshot = next
 	c.mu.Unlock()

@@ -83,6 +83,9 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 	if restartErr != nil {
 		return PluginInstallResult{}, restartErr
 	}
+	if err := s.refreshCacheSync(ctx, "plugin-install"); err != nil {
+		return PluginInstallResult{}, err
+	}
 	plugins, err := s.listPlugins(ctx)
 	if err != nil {
 		return PluginInstallResult{}, err
@@ -344,12 +347,12 @@ func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) 
 }
 
 func (s *Service) listPlugins(ctx context.Context) ([]PluginResource, error) {
-	list, err := s.cli.PluginsList(ctx)
+	snapshot, err := s.cache.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]PluginResource, 0, len(list.Plugins))
-	for _, item := range list.Plugins {
+	out := make([]PluginResource, 0, len(snapshot.plugins.Plugins))
+	for _, item := range snapshot.plugins.Plugins {
 		out = append(out, PluginResource{
 			ID:         item.ID,
 			Name:       item.Name,
