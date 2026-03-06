@@ -35,7 +35,7 @@ export function AppShell({
           <span className="brand-mark">OC</span>
           <div>
             <div className="brand-title">OpenClaw Console</div>
-            <div className="brand-subtitle">Admin Workspace</div>
+            <div className="brand-subtitle">Console Workspace</div>
           </div>
         </div>
         <div className="topbar-meta">

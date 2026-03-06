@@ -1,6 +1,6 @@
-# OpenClaw Admin API (Go + Chi)
+# OpenClaw Console API (Go + Chi)
 
-AIP-style resource-oriented admin API for OpenClaw model management.
+AIP-style resource-oriented console API for OpenClaw model management.
 
 ## Run
 
@@ -16,7 +16,7 @@ If `internal/ui/dist/` contains built web assets, the same server also hosts the
 Set custom address:
 
 ```bash
-OPENCLAW_ADMIN_ADDR=:19090 go run ./cmd/server
+OPENCLAW_CONSOLE_ADDR=:19090 go run ./cmd/server
 ```
 
 ## Build as One Binary (from repo root)
@@ -32,7 +32,7 @@ The single-binary release build uses `go build -trimpath -ldflags="-s -w"` to re
 
 - `OPENCLAW_HOME` (optional)
 - `OPENCLAW_CONFIG_PATH` (optional)
-- `OPENCLAW_ADMIN_ADDR` (optional, default `:18080`)
+- `OPENCLAW_CONSOLE_ADDR` (optional, default `:18080`)
 - `OPENCLAW_ADMIN_SKIP_RESTART=1` (optional, skip `systemctl restart openclaw`)
 
 ## Resources and Endpoints

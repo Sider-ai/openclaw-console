@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-admin-web-ui",
+  "name": "openclaw-console-web-ui",
   "private": true,
   "version": "0.1.0",
   "scripts": {

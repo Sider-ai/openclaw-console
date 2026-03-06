@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: OpenClaw Admin API
+  title: OpenClaw Console API
   version: v1
-  summary: Resource-oriented admin API for OpenClaw model management.
+  summary: Resource-oriented console API for OpenClaw model management.
   description: |
     AIP-style, resource-oriented HTTP API for configuring OpenClaw model settings
     and provider authentication.

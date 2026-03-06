@@ -1,4 +1,4 @@
-# Admin API (AIP Resource-Oriented)
+# Console API (AIP Resource-Oriented)
 
 Version prefix: `/api/v1`
 

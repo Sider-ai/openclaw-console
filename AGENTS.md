@@ -4,8 +4,8 @@
 
 This repository is a small monorepo for OpenClaw Console.
 
-- `admin-api/`: Go admin API built with Chi. Entry point is `cmd/server`, core logic lives under `internal/openclaw`, HTTP handlers under `internal/api`, and embedded UI assets under `internal/ui/dist/`.
-- `web-ui/`: Next.js app router frontend. Main pages and styles are in `app/`.
+- `admin-api/`: Go console API built with Chi. Entry point is `cmd/server`, core logic lives under `internal/openclaw`, HTTP handlers under `internal/api`, and embedded UI assets under `internal/ui/dist/`.
+- `web-ui/`: Vite + React frontend. Main source files live under `src/`.
 - `scripts/`: helper scripts, including single-binary packaging.
 - `dist/`: build outputs such as `openclaw-console` and Linux release binaries.
 
@@ -14,7 +14,7 @@ Keep backend and frontend changes scoped to their module unless the API contract
 ## Build, Test, and Development Commands
 
 - `cd admin-api && go run ./cmd/server`: run the backend on `:18080`.
-- `cd web-ui && NEXT_PUBLIC_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev`: run the UI locally on `:3000`.
+- `cd web-ui && VITE_ADMIN_API_BASE=http://127.0.0.1:18080/api npm run dev`: run the UI locally on `:3000`.
 - `cd admin-api && go test ./...`: run backend tests.
 - `cd web-ui && npm run lint`: run frontend lint checks.
 - `cd web-ui && npm run build`: verify the production frontend build.
@@ -46,4 +46,4 @@ Prefer small PRs that keep backend API changes and UI follow-ups easy to review.
 
 ## Configuration & Security Tips
 
-Useful env vars include `OPENCLAW_HOME`, `OPENCLAW_CONFIG_PATH`, `OPENCLAW_ADMIN_ADDR`, and `OPENCLAW_ADMIN_SKIP_RESTART=1`. Do not commit API keys, auth profiles, `.next/` contents, or release binaries unless the task explicitly requires built artifacts.
+Useful env vars include `OPENCLAW_HOME`, `OPENCLAW_CONFIG_PATH`, `OPENCLAW_CONSOLE_ADDR`, and `OPENCLAW_ADMIN_SKIP_RESTART=1`. Do not commit API keys, auth profiles, `dist/` contents, or release binaries unless the task explicitly requires built artifacts.

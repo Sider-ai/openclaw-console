@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"log"
 	"net/http"
@@ -31,7 +32,7 @@ func main() {
 	handler := api.NewHandler(service, sessions)
 	router := api.NewRouter(handler)
 
-	addr := envOrDefault("OPENCLAW_ADMIN_ADDR", ":18080")
+	addr := cmp.Or(os.Getenv("OPENCLAW_CONSOLE_ADDR"), ":18080")
 	// submitRedirect can block up to ~95s while waiting for onboard completion,
 	// so WriteTimeout must be higher than that request window.
 	srv := &http.Server{
@@ -43,15 +44,8 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("openclaw admin api listening on %s", addr)
+	log.Printf("openclaw console api listening on %s", addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("listen: %v", err)
 	}
-}
-
-func envOrDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
