@@ -116,24 +116,26 @@ export function TelegramChannelPage({
       </section>
 
       <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
-        <h2 className="text-base font-semibold tracking-tight mb-2">Before You Start</h2>
+        <h2 className="text-base font-semibold tracking-tight mb-2">Quick setup</h2>
         <Separator className="mb-4" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="rounded-lg border p-4">
-            <strong className="font-semibold">1. Open BotFather</strong>
-            <p className="text-sm text-muted-foreground mt-1">In Telegram, search for <Code>@BotFather</Code>. This is the official Telegram bot used to create and manage bots.</p>
+            <strong className="font-semibold">1. Create a bot via BotFather</strong>
+            <p className="text-sm text-muted-foreground mt-1">Open <Code>@BotFather</Code> in Telegram and send <Code>/newbot</Code>. Follow the prompts — BotFather will give you a bot token when done.</p>
           </div>
           <div className="rounded-lg border p-4">
-            <strong className="font-semibold">2. Create a bot</strong>
-            <p className="text-sm text-muted-foreground mt-1">Send <Code>/newbot</Code> to BotFather and follow the prompts. Telegram will give you a bot token.</p>
+            <strong className="font-semibold">2. Paste the token and save</strong>
+            <p className="text-sm text-muted-foreground mt-1">Paste the token into the <strong>Bot Token</strong> field below. Set <strong>DM Policy</strong> to <Code>pairing</Code> (recommended), then click <strong>Save Configuration</strong>.</p>
           </div>
           <div className="rounded-lg border p-4">
-            <strong className="font-semibold">3. Copy the token</strong>
-            <p className="text-sm text-muted-foreground mt-1">The token looks like <Code>123456:ABC...</Code>. Paste it into the form below. Keep it secret.</p>
+            <strong className="font-semibold">3. Start the gateway and approve pairing</strong>
+            <p className="text-sm text-muted-foreground mt-1">Run <Code>openclaw gateway</Code> to start the bot. Send any message to your bot in Telegram, then approve the pairing request on the server:</p>
+            <pre className="mt-2 text-xs bg-muted/60 rounded-md p-2 overflow-auto font-mono leading-relaxed">openclaw pairing list telegram{"\n"}openclaw pairing approve telegram &lt;CODE&gt;</pre>
+            <p className="text-xs text-muted-foreground mt-1">Pairing codes expire after one hour.</p>
           </div>
           <div className="rounded-lg border p-4">
-            <strong className="font-semibold">4. Save and test</strong>
-            <p className="text-sm text-muted-foreground mt-1">Save the configuration, then message your bot in Telegram with <Code>/start</Code> and a normal text message like <Code>hello</Code>.</p>
+            <strong className="font-semibold">4. Add the bot to groups (optional)</strong>
+            <p className="text-sm text-muted-foreground mt-1">Add your bot to the desired groups and configure <strong>Group Policy</strong> below. If the bot needs to see all group messages, disable privacy mode via BotFather's <Code>/setprivacy</Code> command, then re-add the bot to the group.</p>
           </div>
         </div>
       </section>

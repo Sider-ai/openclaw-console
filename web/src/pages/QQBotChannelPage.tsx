@@ -157,7 +157,7 @@ export function QQBotChannelPage({
       ) : (
         <>
           <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
-            <h2 className="text-base font-semibold tracking-tight mb-2">Before You Start</h2>
+            <h2 className="text-base font-semibold tracking-tight mb-2">Quick setup</h2>
             <Separator className="mb-4" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg border p-4">
