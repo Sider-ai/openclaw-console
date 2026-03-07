@@ -236,6 +236,49 @@ func (h *Handler) DisconnectTelegramChannel(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, res)
 }
 
+func (h *Handler) ListTelegramPairings(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListTelegramPairings(r.Context())
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, telegramPairingListResponse{Pairings: items})
+}
+
+func (h *Handler) ApproveTelegramPairing(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+	if strings.TrimSpace(code) == "" {
+		writeBadRequest(w, "code is required")
+		return
+	}
+	if err := h.service.ApproveTelegramPairing(r.Context(), code); err != nil {
+		if strings.Contains(err.Error(), "No pending pairing request") {
+			writeBadRequest(w, "pairing code not found or has expired — ask the user to send a new message to the bot")
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"code": code})
+}
+
+func (h *Handler) RejectTelegramPairing(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+	if strings.TrimSpace(code) == "" {
+		writeBadRequest(w, "code is required")
+		return
+	}
+	if err := h.service.RejectTelegramPairing(r.Context(), code); err != nil {
+		if strings.Contains(err.Error(), "No pending pairing request") {
+			writeBadRequest(w, "pairing code not found or has expired — ask the user to send a new message to the bot")
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"code": code})
+}
+
 func (h *Handler) ListChannels(w http.ResponseWriter, r *http.Request) {
 	items, err := h.service.ListChannels(r.Context())
 	if err != nil {

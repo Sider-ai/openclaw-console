@@ -80,6 +80,7 @@ export function useTelegramChannel(enabled: boolean, onChanged?: () => Promise<v
       return false;
     }
     return (
+      form.botToken.trim() !== "" ||
       channel.enabled !== form.enabled ||
       channel.dmPolicy !== form.dmPolicy ||
       (channel.groupPolicy || "allowlist") !== form.groupPolicy ||

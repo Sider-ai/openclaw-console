@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Dispatch, KeyboardEvent, SetStateAction } from "react";
 
-import type { TelegramChannel, TelegramChannelTestResult } from "../lib/types";
+import type { TelegramChannel, TelegramChannelTestResult, TelegramPairingEntry } from "../lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,6 +31,12 @@ type TelegramChannelPageProps = {
   onTestConnection: () => Promise<void>;
   onDisconnect: () => Promise<void>;
   testResult: TelegramChannelTestResult | null;
+  pairings: TelegramPairingEntry[];
+  pairingLoading: boolean;
+  pairingError: string;
+  onApprovePairing: (code: string) => Promise<void>;
+  onRejectPairing: (code: string) => Promise<void>;
+  onRefreshPairings: () => Promise<void>;
 };
 
 const TELEGRAM_DOCS_URL = "https://docs.openclaw.ai/channels/telegram";
@@ -45,9 +51,16 @@ export function TelegramChannelPage({
   onSave,
   onTestConnection,
   onDisconnect,
-  testResult
+  testResult,
+  pairings,
+  pairingLoading,
+  pairingError,
+  onApprovePairing,
+  onRejectPairing,
+  onRefreshPairings
 }: TelegramChannelPageProps) {
   const [allowFromDraft, setAllowFromDraft] = useState("");
+  const [pairingCodeDraft, setPairingCodeDraft] = useState("");
   const isConfigured = channel?.configured ?? false;
 
   function appendAllowFromValues(raw: string) {
@@ -129,9 +142,7 @@ export function TelegramChannelPage({
           </div>
           <div className="rounded-lg border p-4">
             <strong className="font-semibold">3. Start the gateway and approve pairing</strong>
-            <p className="text-sm text-muted-foreground mt-1">Run <Code>openclaw gateway</Code> to start the bot. Send any message to your bot in Telegram, then approve the pairing request on the server:</p>
-            <pre className="mt-2 text-xs bg-muted/60 rounded-md p-2 overflow-auto font-mono leading-relaxed">openclaw pairing list telegram{"\n"}openclaw pairing approve telegram &lt;CODE&gt;</pre>
-            <p className="text-xs text-muted-foreground mt-1">Pairing codes expire after one hour.</p>
+            <p className="text-sm text-muted-foreground mt-1">Start OpenClaw so the bot comes online. With <Code>pairing</Code> DM policy, send any message to the bot in Telegram — OpenClaw will issue a pairing code that you approve from the server. Pairing codes expire after one hour.</p>
           </div>
           <div className="rounded-lg border p-4">
             <strong className="font-semibold">4. Add the bot to groups (optional)</strong>
@@ -193,44 +204,113 @@ export function TelegramChannelPage({
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Allow From</Label>
-            <p className="text-sm text-muted-foreground">Telegram user IDs allowed to talk to the bot in direct messages. Add one ID at a time. For <Code>open</Code> DM policy, add <Code>*</Code>.</p>
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap gap-2 items-center">
-                <Input
-                  className="max-w-xs transition-colors duration-150"
-                  onChange={(event) => setAllowFromDraft(event.target.value)}
-                  onKeyDown={handleAllowFromKeyDown}
-                  placeholder="123456789"
-                  type="text"
-                  value={allowFromDraft}
-                />
-                <Button variant="outline" disabled={!allowFromDraft.trim() || loading} onClick={() => appendAllowFromValues(allowFromDraft)} type="button">
-                  Add User ID
-                </Button>
+          {form.dmPolicy === "allowlist" && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Allow From</Label>
+              <p className="text-sm text-muted-foreground">Telegram user IDs allowed to send direct messages to the bot. Add one ID at a time.</p>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Input
+                    className="max-w-xs transition-colors duration-150"
+                    onChange={(event) => setAllowFromDraft(event.target.value)}
+                    onKeyDown={handleAllowFromKeyDown}
+                    placeholder="123456789"
+                    type="text"
+                    value={allowFromDraft}
+                  />
+                  <Button variant="outline" disabled={!allowFromDraft.trim() || loading} onClick={() => appendAllowFromValues(allowFromDraft)} type="button">
+                    Add User ID
+                  </Button>
+                </div>
+                {form.allowFrom.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {form.allowFrom.map((value) => (
+                      <Badge key={value} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                        <span>{value}</span>
+                        <button
+                          onClick={() => removeAllowFromValue(value)}
+                          type="button"
+                          className="ml-1 rounded-sm hover:text-destructive focus:outline-none"
+                          aria-label={`Remove ${value}`}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No user IDs added yet.</p>
+                )}
               </div>
-              {form.allowFrom.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {form.allowFrom.map((value) => (
-                    <Badge key={value} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
-                      <span>{value}</span>
-                      <button
-                        onClick={() => removeAllowFromValue(value)}
-                        type="button"
-                        className="ml-1 rounded-sm hover:text-destructive focus:outline-none"
-                        aria-label={`Remove ${value}`}
-                      >
-                        ×
-                      </button>
-                    </Badge>
+            </div>
+          )}
+
+          {form.dmPolicy === "pairing" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pairing Code</Label>
+                <p className="text-sm text-muted-foreground">When a new user messages the bot, they receive a pairing code. Paste it here to approve or reject their access.</p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Input
+                    className="max-w-xs font-mono transition-colors duration-150"
+                    onChange={(e) => setPairingCodeDraft(e.target.value)}
+                    placeholder="e.g. RXKQABQE"
+                    type="text"
+                    value={pairingCodeDraft}
+                  />
+                  <Button
+                    disabled={pairingLoading || !pairingCodeDraft.trim()}
+                    onClick={() => { void onApprovePairing(pairingCodeDraft.trim()); setPairingCodeDraft(""); }}
+                    type="button"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={pairingLoading || !pairingCodeDraft.trim()}
+                    onClick={() => { void onRejectPairing(pairingCodeDraft.trim()); setPairingCodeDraft(""); }}
+                    type="button"
+                  >
+                    Reject
+                  </Button>
+                </div>
+                {pairingError && <p className="text-sm text-destructive">{pairingError}</p>}
+              </div>
+              {pairings.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pending Requests</Label>
+                    <Button variant="ghost" size="sm" onClick={() => void onRefreshPairings()} disabled={pairingLoading} type="button" className="text-xs h-auto py-1">
+                      Refresh
+                    </Button>
+                  </div>
+                  {pairings.map((entry) => (
+                    <div key={entry.code} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">
+                          {entry.firstName || "Unknown user"}
+                          {entry.username && <span className="text-muted-foreground font-normal"> (@{entry.username})</span>}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          User ID: <Code>{entry.userId}</Code>
+                          {entry.requestedAt && <> · {new Date(entry.requestedAt).toLocaleString()}</>}
+                        </span>
+                        <span className="text-xs text-muted-foreground">Code: <Code>{entry.code}</Code></span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={pairingLoading} onClick={() => void onApprovePairing(entry.code)} type="button">
+                          Approve
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled={pairingLoading} onClick={() => void onRejectPairing(entry.code)} type="button">
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No user IDs added yet.</p>
               )}
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="group-policy" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Group Policy</Label>

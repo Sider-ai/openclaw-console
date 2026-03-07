@@ -128,4 +128,12 @@ export type QQBotChannel = {
   lastAppliedAction?: string;
 };
 
+export type TelegramPairingEntry = {
+  code: string;
+  userId: string;
+  username?: string;
+  firstName?: string;
+  requestedAt?: string;
+};
+
 export type NavKey = "agents" | "channels" | "tools" | "models";

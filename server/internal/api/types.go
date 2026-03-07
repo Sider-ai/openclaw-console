@@ -74,3 +74,7 @@ type channelListResponse struct {
 type pluginListResponse struct {
 	Plugins any `json:"plugins"`
 }
+
+type telegramPairingListResponse struct {
+	Pairings any `json:"pairings"`
+}

@@ -94,6 +94,14 @@ type TelegramChannelResource struct {
 	LastAppliedAction    string   `json:"lastAppliedAction,omitempty"`
 }
 
+type TelegramPairingResource struct {
+	Code        string `json:"code"`
+	UserID      string `json:"userId"`
+	Username    string `json:"username,omitempty"`
+	FirstName   string `json:"firstName,omitempty"`
+	RequestedAt string `json:"requestedAt,omitempty"`
+}
+
 type TelegramChannelConfig struct {
 	Enabled        bool
 	BotToken       string

@@ -7,6 +7,7 @@ import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
 import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
+import { useTelegramPairings } from "./hooks/useTelegramPairings";
 import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
@@ -29,6 +30,10 @@ export default function App() {
   const consoleData = useConsoleData(providerRoute, { requestConfirm });
   const channelsData = useChannelsData(activeNav === "channels");
   const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh, { requestConfirm });
+  const telegramPairings = useTelegramPairings(
+    activeNav === "channels" && channelRoute === "telegram" &&
+    (telegramChannel.channel?.dmPolicy === "pairing" || telegramChannel.form.dmPolicy === "pairing")
+  );
   const qqbotChannel = useQQBotChannel(activeNav === "channels" && channelRoute === "qqbot", channelsData.refresh);
   const { setModelsExpanded } = consoleData;
   const [channelsExpanded, setChannelsExpanded] = useState(activeNav === "channels");
@@ -182,6 +187,12 @@ export default function App() {
                   onSave={telegramChannel.save}
                   onTestConnection={telegramChannel.testConnection}
                   testResult={telegramChannel.testResult}
+                  pairings={telegramPairings.pairings}
+                  pairingLoading={telegramPairings.loading}
+                  pairingError={telegramPairings.error}
+                  onApprovePairing={telegramPairings.approve}
+                  onRejectPairing={telegramPairings.reject}
+                  onRefreshPairings={telegramPairings.refresh}
                 />
               }
             />

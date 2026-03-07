@@ -368,6 +368,32 @@ func (s *Service) listPlugins(ctx context.Context) ([]PluginResource, error) {
 	return out, nil
 }
 
+func (s *Service) ListTelegramPairings(ctx context.Context) ([]TelegramPairingResource, error) {
+	list, err := s.cli.PairingList(ctx, "telegram")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]TelegramPairingResource, 0, len(list.Pairings))
+	for _, p := range list.Pairings {
+		out = append(out, TelegramPairingResource{
+			Code:        p.Code,
+			UserID:      p.UserID,
+			Username:    p.Username,
+			FirstName:   p.FirstName,
+			RequestedAt: p.RequestedAt,
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) ApproveTelegramPairing(ctx context.Context, code string) error {
+	return s.cli.PairingApprove(ctx, "telegram", code)
+}
+
+func (s *Service) RejectTelegramPairing(ctx context.Context, code string) error {
+	return s.cli.PairingReject(ctx, "telegram", code)
+}
+
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
 	if provider != "" && !isManagedProvider(provider) {
 		return nil, fmt.Errorf("unsupported provider: %s", provider)

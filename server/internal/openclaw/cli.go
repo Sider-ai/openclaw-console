@@ -132,6 +132,39 @@ func (c *CLI) InstallPlugin(ctx context.Context, spec string) (string, error) {
 	return string(out), nil
 }
 
+type pairingList struct {
+	Pairings []struct {
+		Code        string `json:"code"`
+		Channel     string `json:"channel"`
+		UserID      string `json:"userId"`
+		Username    string `json:"username"`
+		FirstName   string `json:"firstName"`
+		RequestedAt string `json:"requestedAt"`
+	} `json:"pairings"`
+}
+
+func (c *CLI) PairingList(ctx context.Context, channel string) (pairingList, error) {
+	out, err := c.runJSON(ctx, "openclaw", "pairing", "list", channel, "--json")
+	if err != nil {
+		return pairingList{}, err
+	}
+	var res pairingList
+	if err := json.Unmarshal(out, &res); err != nil {
+		return pairingList{}, fmt.Errorf("parse pairing list: %w", err)
+	}
+	return res, nil
+}
+
+func (c *CLI) PairingApprove(ctx context.Context, channel, code string) error {
+	_, err := c.run(ctx, "openclaw", "pairing", "approve", channel, code)
+	return err
+}
+
+func (c *CLI) PairingReject(ctx context.Context, channel, code string) error {
+	_, err := c.run(ctx, "openclaw", "pairing", "reject", channel, code)
+	return err
+}
+
 func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channelsCapabilities, error) {
 	args := []string{"channels", "capabilities", "--json"}
 	if strings.TrimSpace(channel) != "" {
