@@ -83,6 +83,24 @@ Key hooks:
 - Keep `lib/navigation.ts` free of runtime UI dependencies (no Lucide imports)
 - Frontend validation: `npm run build` (TypeScript + bundle) is the authoritative check
 
+### Backend layering contract
+
+**Principle: surface errors, don't mask them.**
+
+Each layer trusts its callers. Input validation happens at the entry boundary (`internal/api` handlers) using `validator/v10` struct tags. Lower layers do not re-validate or defensively normalise values they receive.
+
+`strings.TrimSpace` (and similar normalisation) should only be used when trimming **is** the logic — not to silently fix bad input. For example, if a caller passes `"  opus-4.6  "`, pass it through as-is; if the downstream CLI call fails, that error should surface rather than being hidden by silent trimming.
+
+**When TrimSpace is appropriate:**
+- A normalisation function whose explicit purpose is to clean input (e.g. `normalizeStringList`)
+- Reading raw data from disk or process output where the source is not contract-bound
+
+**When TrimSpace is not appropriate:**
+- Defensively trimming a value received from a contract-bound caller
+- Trimming before an emptiness check — if the original value is `"  "`, that's a bug in the caller; let it propagate
+
+The same principle applies to all defensive error-masking: don't swallow, coerce, or silently default invalid state. Let errors surface so the real cause is visible.
+
 ## Environment Variables
 
 | Variable | Default | Purpose |

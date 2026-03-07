@@ -12,11 +12,11 @@ type APIErrorBody struct {
 }
 
 type patchModelSettingRequest struct {
-	DefaultModel string `json:"defaultModel"`
+	DefaultModel string `json:"defaultModel" validate:"required"`
 }
 
 type connectAPIKeyRequest struct {
-	APIKey string `json:"apiKey"`
+	APIKey string `json:"apiKey" validate:"required"`
 }
 
 type resetAuthRequest struct {
@@ -29,15 +29,15 @@ type createCodexSessionRequest struct {
 }
 
 type submitRedirectRequest struct {
-	RedirectURL string `json:"redirectUrl"`
+	RedirectURL string `json:"redirectUrl" validate:"required"`
 }
 
 type patchTelegramChannelRequest struct {
 	Enabled        bool     `json:"enabled"`
 	BotToken       *string  `json:"botToken,omitempty"`
-	DMPolicy       string   `json:"dmPolicy"`
+	DMPolicy       string   `json:"dmPolicy" validate:"required,oneof=pairing allowlist open disabled"`
 	AllowFrom      []string `json:"allowFrom,omitempty"`
-	GroupPolicy    string   `json:"groupPolicy"`
+	GroupPolicy    string   `json:"groupPolicy" validate:"required,oneof=allowlist open disabled"`
 	RequireMention bool     `json:"requireMention"`
 }
 
@@ -47,7 +47,7 @@ type testTelegramChannelRequest struct {
 
 type patchQQBotChannelRequest struct {
 	Enabled            bool     `json:"enabled"`
-	AppID              string   `json:"appId"`
+	AppID              string   `json:"appId" validate:"required"`
 	ClientSecret       *string  `json:"clientSecret,omitempty"`
 	AllowFrom          []string `json:"allowFrom,omitempty"`
 	MarkdownSupport    bool     `json:"markdownSupport"`

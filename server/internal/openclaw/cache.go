@@ -119,7 +119,6 @@ func (c *serviceCache) refresh(ctx context.Context) error {
 func (c *serviceCache) startFileWatcher(ctx context.Context, paths ...string) error {
 	targetsByDir := map[string]map[string]struct{}{}
 	for _, p := range paths {
-		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
@@ -235,7 +234,6 @@ func buildServiceSnapshot(status modelsStatus, list modelsList) *serviceSnapshot
 		providerSet[provider] = struct{}{}
 	}
 	addStatusProvider := func(provider string) {
-		provider = strings.TrimSpace(provider)
 		if !isWhitelistedProviderID(provider, discoveredProviders) {
 			return
 		}
@@ -317,7 +315,7 @@ func buildProviderResourceFromStatus(provider string, status modelsStatus, disco
 	}
 
 	for _, missing := range status.Auth.MissingProvidersInUse {
-		if strings.TrimSpace(missing) == provider {
+		if missing == provider {
 			resource.MissingInUse = true
 			break
 		}
@@ -325,7 +323,6 @@ func buildProviderResourceFromStatus(provider string, status modelsStatus, disco
 
 	seenOAuthProvider := map[string]struct{}{}
 	for _, item := range status.Auth.ProvidersWithOAuth {
-		item = strings.TrimSpace(item)
 		if !isWhitelistedProviderID(item, discovered) {
 			continue
 		}

@@ -6,21 +6,51 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
+
+func writeServiceError(w http.ResponseWriter, err error) {
+	var notFoundErr *openclaw.NotFoundError
+	if errors.As(err, &notFoundErr) {
+		writeNotFound(w, notFoundErr.Error())
+		return
+	}
+	var inputErr *openclaw.InputError
+	if errors.As(err, &inputErr) {
+		writeBadRequest(w, inputErr.Error())
+		return
+	}
+	var conflictErr *openclaw.ConflictError
+	if errors.As(err, &conflictErr) {
+		writeConflict(w, conflictErr.Error())
+		return
+	}
+	writeInternalError(w, err)
+}
 
 type Handler struct {
 	service  *openclaw.Service
 	sessions *openclaw.SessionManager
+	validate *validator.Validate
 }
 
 func NewHandler(service *openclaw.Service, sessions *openclaw.SessionManager) *Handler {
-	return &Handler{service: service, sessions: sessions}
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" || name == "" {
+			return fld.Name
+		}
+		return name
+	})
+	return &Handler{service: service, sessions: sessions, validate: v}
 }
 
 func (h *Handler) GetDefaultModelSetting(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +63,7 @@ func (h *Handler) GetDefaultModelSetting(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) PatchDefaultModelSetting(w http.ResponseWriter, r *http.Request) {
-	updateMask := strings.TrimSpace(r.URL.Query().Get("update_mask"))
+	updateMask := r.URL.Query().Get("update_mask")
 	if updateMask == "" {
 		writeBadRequest(w, "update_mask is required and must include default_model")
 		return
@@ -45,6 +75,10 @@ func (h *Handler) PatchDefaultModelSetting(w http.ResponseWriter, r *http.Reques
 
 	var req patchModelSettingRequest
 	if err := decodeJSON(r, &req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if err := h.validate.Struct(&req); err != nil {
 		writeBadRequest(w, err.Error())
 		return
 	}
@@ -69,11 +103,7 @@ func (h *Handler) GetProvider(w http.ResponseWriter, r *http.Request) {
 	providerID := chi.URLParam(r, "provider")
 	res, err := h.service.GetProvider(r.Context(), providerID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -86,17 +116,13 @@ func (h *Handler) ConnectProviderAPIKey(w http.ResponseWriter, r *http.Request) 
 		writeBadRequest(w, err.Error())
 		return
 	}
+	if err := h.validate.Struct(&req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
 	providerRes, err := h.service.ConnectProviderAPIKey(r.Context(), providerID, req.APIKey)
 	if err != nil {
-		if strings.Contains(err.Error(), "provider is required") || strings.Contains(err.Error(), "apiKey is required") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, providerRes)
@@ -106,11 +132,7 @@ func (h *Handler) DisconnectProvider(w http.ResponseWriter, r *http.Request) {
 	providerID := chi.URLParam(r, "provider")
 	res, err := h.service.DisconnectProvider(r.Context(), providerID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -130,11 +152,7 @@ func (h *Handler) ResetAuth(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.ResetAuth(r.Context(), req.Provider, restart)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -144,11 +162,7 @@ func (h *Handler) ListAuthProfiles(w http.ResponseWriter, r *http.Request) {
 	providerID := chi.URLParam(r, "provider")
 	items, err := h.service.ListAuthProfiles(providerID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, authProfileListResponse{AuthProfiles: items})
@@ -159,15 +173,7 @@ func (h *Handler) GetAuthProfile(w http.ResponseWriter, r *http.Request) {
 	profileID := chi.URLParam(r, "auth_profile")
 	item, err := h.service.GetAuthProfile(providerID, profileID)
 	if err != nil {
-		if errors.Is(err, openclaw.ErrNotFound) {
-			writeNotFound(w, "auth profile not found")
-			return
-		}
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
@@ -188,20 +194,20 @@ func (h *Handler) PatchTelegramChannel(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, err.Error())
 		return
 	}
+	if err := h.validate.Struct(&req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
 	res, err := h.service.UpdateTelegramChannel(r.Context(), openclaw.TelegramChannelUpdate{
 		Enabled:        req.Enabled,
 		BotToken:       req.BotToken,
-		DMPolicy:       strings.TrimSpace(req.DMPolicy),
+		DMPolicy:       req.DMPolicy,
 		AllowFrom:      req.AllowFrom,
-		GroupPolicy:    strings.TrimSpace(req.GroupPolicy),
+		GroupPolicy:    req.GroupPolicy,
 		RequireMention: req.RequireMention,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "dmPolicy") || strings.Contains(err.Error(), "groupPolicy") || strings.Contains(err.Error(), "allowFrom") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -217,11 +223,7 @@ func (h *Handler) TestTelegramChannel(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	res, err := h.service.TestTelegramChannel(ctx, req.BotToken)
 	if err != nil {
-		if strings.Contains(err.Error(), "botToken is required") || strings.Contains(err.Error(), "telegram token rejected") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -247,16 +249,12 @@ func (h *Handler) ListTelegramPairings(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ApproveTelegramPairing(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
-	if strings.TrimSpace(code) == "" {
+	if code == "" {
 		writeBadRequest(w, "code is required")
 		return
 	}
 	if err := h.service.ApproveTelegramPairing(r.Context(), code); err != nil {
-		if strings.Contains(err.Error(), "No pending pairing request") {
-			writeBadRequest(w, "pairing code not found or has expired — ask the user to send a new message to the bot")
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"code": code})
@@ -264,16 +262,12 @@ func (h *Handler) ApproveTelegramPairing(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) RejectTelegramPairing(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
-	if strings.TrimSpace(code) == "" {
+	if code == "" {
 		writeBadRequest(w, "code is required")
 		return
 	}
 	if err := h.service.RejectTelegramPairing(r.Context(), code); err != nil {
-		if strings.Contains(err.Error(), "No pending pairing request") {
-			writeBadRequest(w, "pairing code not found or has expired — ask the user to send a new message to the bot")
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"code": code})
@@ -303,19 +297,19 @@ func (h *Handler) PatchQQBotChannel(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, err.Error())
 		return
 	}
+	if err := h.validate.Struct(&req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
 	res, err := h.service.UpdateQQBotChannel(r.Context(), openclaw.QQBotChannelUpdate{
 		Enabled:            req.Enabled,
-		AppID:              strings.TrimSpace(req.AppID),
+		AppID:              req.AppID,
 		ClientSecret:       req.ClientSecret,
 		AllowFrom:          req.AllowFrom,
 		MarkdownSupport:    req.MarkdownSupport,
-		ImageServerBaseURL: strings.TrimSpace(req.ImageServerBaseURL),
+		ImageServerBaseURL: req.ImageServerBaseURL,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "appId is required") {
-			writeBadRequest(w, err.Error())
-			return
-		}
 		writeInternalError(w, err)
 		return
 	}
@@ -353,7 +347,7 @@ func (h *Handler) InstallQQBotPlugin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request) {
-	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
+	provider := r.URL.Query().Get("provider")
 	if provider == "" {
 		items, err := h.service.ListModelCatalogSnapshot(r.Context())
 		if err != nil {
@@ -364,7 +358,7 @@ func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request
 		return
 	}
 	pageSize := 50
-	if raw := strings.TrimSpace(r.URL.Query().Get("page_size")); raw != "" {
+	if raw := r.URL.Query().Get("page_size"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n <= 0 {
 			writeBadRequest(w, "page_size must be a positive integer")
@@ -372,23 +366,11 @@ func (h *Handler) ListModelCatalogEntries(w http.ResponseWriter, r *http.Request
 		}
 		pageSize = n
 	}
-	pageToken := strings.TrimSpace(r.URL.Query().Get("page_token"))
+	pageToken := r.URL.Query().Get("page_token")
 
 	items, next, err := h.service.ListModelCatalogEntries(r.Context(), provider, pageToken, pageSize)
 	if err != nil {
-		if strings.Contains(err.Error(), "provider is required") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		if strings.Contains(err.Error(), "unsupported provider") {
-			writeNotFound(w, err.Error())
-			return
-		}
-		if strings.Contains(err.Error(), "page token") {
-			writeBadRequest(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, modelCatalogListResponse{ModelCatalogEntries: items, NextPageToken: next})
@@ -414,11 +396,7 @@ func (h *Handler) GetCodexAuthSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "codex_auth_session")
 	res, err := h.sessions.Get(sessionID)
 	if err != nil {
-		if errors.Is(err, openclaw.ErrNotFound) {
-			writeNotFound(w, "session not found")
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -431,7 +409,11 @@ func (h *Handler) SubmitCodexRedirect(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(w, err.Error())
 		return
 	}
-	if !strings.HasPrefix(strings.TrimSpace(req.RedirectURL), "http://localhost:1455/auth/callback") {
+	if err := h.validate.Struct(&req); err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if !strings.HasPrefix(req.RedirectURL, "http://localhost:1455/auth/callback") {
 		writeBadRequest(w, "redirectUrl must start with http://localhost:1455/auth/callback")
 		return
 	}
@@ -440,15 +422,7 @@ func (h *Handler) SubmitCodexRedirect(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	res, err := h.sessions.SubmitRedirect(ctx, sessionID, req.RedirectURL)
 	if err != nil {
-		if errors.Is(err, openclaw.ErrNotFound) {
-			writeNotFound(w, "session not found")
-			return
-		}
-		if strings.Contains(err.Error(), "session not ready") {
-			writeConflict(w, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -458,11 +432,7 @@ func (h *Handler) CancelCodexSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "codex_auth_session")
 	res, err := h.sessions.Cancel(sessionID)
 	if err != nil {
-		if errors.Is(err, openclaw.ErrNotFound) {
-			writeNotFound(w, "session not found")
-			return
-		}
-		writeInternalError(w, err)
+		writeServiceError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)

@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -142,7 +141,7 @@ func (m *SessionManager) Get(id string) (CodexAuthSessionResource, error) {
 
 	s, ok := m.sessions[id]
 	if !ok {
-		return CodexAuthSessionResource{}, ErrNotFound
+		return CodexAuthSessionResource{}, &NotFoundError{Message: "session not found"}
 	}
 	m.expireIfNeeded(s)
 	return m.toResource(s), nil
@@ -153,18 +152,18 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 	s, ok := m.sessions[id]
 	if !ok {
 		m.mu.Unlock()
-		return CodexAuthSessionResource{}, ErrNotFound
+		return CodexAuthSessionResource{}, &NotFoundError{Message: "session not found"}
 	}
 	m.expireIfNeeded(s)
 	if s.state != sessionStateAwaitingRedirect {
 		res := m.toResource(s)
 		m.mu.Unlock()
-		return CodexAuthSessionResource{}, fmt.Errorf("session not ready for redirect: %s", res.State)
+		return CodexAuthSessionResource{}, &ConflictError{Message: fmt.Sprintf("session not ready for redirect: %s", res.State)}
 	}
 	s.state = sessionStateExchangingToken
 	m.mu.Unlock()
 
-	if _, err := s.ptmx.Write([]byte(strings.TrimSpace(redirectURL) + "\r")); err != nil {
+	if _, err := s.ptmx.Write([]byte(redirectURL + "\r")); err != nil {
 		m.failSession(s, "SESSION_WRITE_FAILED", fmt.Sprintf("write redirect url: %v", err))
 		return m.toResource(s), err
 	}
@@ -233,7 +232,7 @@ func (m *SessionManager) Cancel(id string) (CodexAuthSessionResource, error) {
 
 	s, ok := m.sessions[id]
 	if !ok {
-		return CodexAuthSessionResource{}, ErrNotFound
+		return CodexAuthSessionResource{}, &NotFoundError{Message: "session not found"}
 	}
 	if s.state == sessionStateSucceeded || s.state == sessionStateFailed || s.state == sessionStateCancelled || s.state == sessionStateExpired {
 		return m.toResource(s), nil

@@ -1,11 +1,18 @@
 package openclaw
 
-import (
-	"errors"
-	"time"
-)
+import "time"
 
-var ErrNotFound = errors.New("not found")
+type NotFoundError struct{ Message string }
+
+func (e *NotFoundError) Error() string { return e.Message }
+
+type InputError struct{ Message string }
+
+func (e *InputError) Error() string { return e.Message }
+
+type ConflictError struct{ Message string }
+
+func (e *ConflictError) Error() string { return e.Message }
 
 type ModelSettingResource struct {
 	Name         string `json:"name"`

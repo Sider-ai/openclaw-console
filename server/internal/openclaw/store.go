@@ -48,11 +48,6 @@ func (s *Store) UpsertProviderAPIKey(_ context.Context, provider string, apiKey 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	provider = strings.TrimSpace(provider)
-	if provider == "" {
-		return fmt.Errorf("provider is required")
-	}
-
 	auth, err := s.readAuthStore(s.paths.AuthStorePath)
 	if err != nil {
 		return err
@@ -61,7 +56,7 @@ func (s *Store) UpsertProviderAPIKey(_ context.Context, provider string, apiKey 
 	auth.Profiles[profileID] = AuthCredential{
 		Type:     "api_key",
 		Provider: provider,
-		Key:      strings.TrimSpace(apiKey),
+		Key:      apiKey,
 	}
 	if err := s.writeJSONAtomic(s.paths.AuthStorePath, auth); err != nil {
 		return err
@@ -144,16 +139,16 @@ func (s *Store) UpdateTelegramChannel(_ context.Context, update TelegramChannelU
 
 	current := readTelegramChannelConfig(cfg)
 	if update.BotToken != nil {
-		current.BotToken = strings.TrimSpace(*update.BotToken)
+		current.BotToken = *update.BotToken
 		if current.BotToken != "" {
 			current.TokenFile = ""
 		}
 	}
 
 	current.Enabled = update.Enabled
-	current.DMPolicy = strings.TrimSpace(update.DMPolicy)
+	current.DMPolicy = update.DMPolicy
 	current.AllowFrom = append([]string(nil), update.AllowFrom...)
-	current.GroupPolicy = strings.TrimSpace(update.GroupPolicy)
+	current.GroupPolicy = update.GroupPolicy
 	current.RequireMention = update.RequireMention
 
 	setNestedMapValue(cfg, []string{"channels", "telegram"}, telegramChannelConfigMap(current))
@@ -203,12 +198,12 @@ func (s *Store) UpdateQQBotChannel(_ context.Context, update QQBotChannelUpdate)
 
 	current := readQQBotChannelConfig(cfg)
 	current.Enabled = update.Enabled
-	current.AppID = strings.TrimSpace(update.AppID)
+	current.AppID = update.AppID
 	current.AllowFrom = append([]string(nil), update.AllowFrom...)
 	current.MarkdownSupport = update.MarkdownSupport
-	current.ImageServerBaseURL = strings.TrimSpace(update.ImageServerBaseURL)
+	current.ImageServerBaseURL = update.ImageServerBaseURL
 	if update.ClientSecret != nil {
-		current.ClientSecret = strings.TrimSpace(*update.ClientSecret)
+		current.ClientSecret = *update.ClientSecret
 		if current.ClientSecret != "" {
 			current.ClientSecretFile = ""
 		}
@@ -369,7 +364,7 @@ func (s *Store) GetAuthProfile(provider, profileID string) (*ProfileResource, er
 			return &p, nil
 		}
 	}
-	return nil, ErrNotFound
+	return nil, &NotFoundError{Message: "auth profile not found"}
 }
 
 func (s *Store) MergeCodexFromTemp(ctx context.Context, tmp Paths, defaultModel string, cli *CLI) error {
@@ -580,14 +575,14 @@ func telegramChannelConfigMap(cfg TelegramChannelConfig) map[string]any {
 	if len(cfg.AllowFrom) > 0 {
 		out["allowFrom"] = stringIDsToJSONNumbers(cfg.AllowFrom)
 	}
-	if token := strings.TrimSpace(cfg.BotToken); token != "" {
-		out["botToken"] = token
+	if cfg.BotToken != "" {
+		out["botToken"] = cfg.BotToken
 	}
-	if tokenFile := strings.TrimSpace(cfg.TokenFile); tokenFile != "" {
-		out["tokenFile"] = tokenFile
+	if cfg.TokenFile != "" {
+		out["tokenFile"] = cfg.TokenFile
 	}
-	if webhookURL := strings.TrimSpace(cfg.WebhookURL); webhookURL != "" {
-		out["webhookUrl"] = webhookURL
+	if cfg.WebhookURL != "" {
+		out["webhookUrl"] = cfg.WebhookURL
 	}
 	return out
 }
@@ -598,17 +593,17 @@ func qqbotChannelConfigMap(cfg QQBotChannelConfig) map[string]any {
 		"allowFrom":       append([]string(nil), cfg.AllowFrom...),
 		"markdownSupport": cfg.MarkdownSupport,
 	}
-	if appID := strings.TrimSpace(cfg.AppID); appID != "" {
-		out["appId"] = appID
+	if cfg.AppID != "" {
+		out["appId"] = cfg.AppID
 	}
-	if clientSecret := strings.TrimSpace(cfg.ClientSecret); clientSecret != "" {
-		out["clientSecret"] = clientSecret
+	if cfg.ClientSecret != "" {
+		out["clientSecret"] = cfg.ClientSecret
 	}
-	if clientSecretFile := strings.TrimSpace(cfg.ClientSecretFile); clientSecretFile != "" {
-		out["clientSecretFile"] = clientSecretFile
+	if cfg.ClientSecretFile != "" {
+		out["clientSecretFile"] = cfg.ClientSecretFile
 	}
-	if imageServerBaseURL := strings.TrimSpace(cfg.ImageServerBaseURL); imageServerBaseURL != "" {
-		out["imageServerBaseUrl"] = imageServerBaseURL
+	if cfg.ImageServerBaseURL != "" {
+		out["imageServerBaseUrl"] = cfg.ImageServerBaseURL
 	}
 	return out
 }
@@ -704,28 +699,27 @@ func readTelegramRequireMention(root map[string]any) bool {
 func stringIDsToJSONNumbers(values []string) []any {
 	out := make([]any, 0, len(values))
 	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
+		if value == "" {
 			continue
 		}
-		if trimmed == "*" {
-			out = append(out, trimmed)
+		if value == "*" {
+			out = append(out, value)
 			continue
 		}
-		if _, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
-			out = append(out, json.Number(trimmed))
+		if _, err := strconv.ParseInt(value, 10, 64); err == nil {
+			out = append(out, json.Number(value))
 			continue
 		}
-		out = append(out, trimmed)
+		out = append(out, value)
 	}
 	return out
 }
 
 func defaultString(value string, fallback string) string {
-	if strings.TrimSpace(value) == "" {
+	if value == "" {
 		return fallback
 	}
-	return strings.TrimSpace(value)
+	return value
 }
 
 func profileStatus(cred AuthCredential) string {

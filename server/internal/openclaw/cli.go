@@ -100,7 +100,7 @@ func (c *CLI) ModelsList(ctx context.Context, provider string) (modelsList, erro
 }
 
 func (c *CLI) SetDefaultModel(ctx context.Context, model string) error {
-	if strings.TrimSpace(model) == "" {
+	if model == "" {
 		return fmt.Errorf("model is required")
 	}
 	_, err := c.run(ctx, "openclaw", "models", "set", model)
@@ -167,7 +167,7 @@ func (c *CLI) PairingReject(ctx context.Context, channel, code string) error {
 
 func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channelsCapabilities, error) {
 	args := []string{"channels", "capabilities", "--json"}
-	if strings.TrimSpace(channel) != "" {
+	if channel != "" {
 		args = append(args, "--channel", channel)
 	}
 	out, err := c.runJSON(ctx, "openclaw", args...)
@@ -234,14 +234,14 @@ func DecodePageToken(token string) (int, error) {
 	}
 	b, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
-		return 0, fmt.Errorf("decode page token: %w", err)
+		return 0, &InputError{Message: fmt.Sprintf("invalid page token: %v", err)}
 	}
 	n, err := strconv.Atoi(string(b))
 	if err != nil {
-		return 0, fmt.Errorf("parse page token: %w", err)
+		return 0, &InputError{Message: fmt.Sprintf("invalid page token: %v", err)}
 	}
 	if n < 0 {
-		return 0, fmt.Errorf("invalid page token")
+		return 0, &InputError{Message: "invalid page token"}
 	}
 	return n, nil
 }

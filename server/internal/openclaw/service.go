@@ -40,7 +40,7 @@ func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, e
 			ChannelID:       "telegram",
 			DisplayName:     "Telegram",
 			Enabled:         telegramCfg.Enabled,
-			Configured:      strings.TrimSpace(telegramCfg.BotToken) != "" || strings.TrimSpace(telegramCfg.TokenFile) != "",
+			Configured:      telegramCfg.BotToken != "" || telegramCfg.TokenFile != "",
 			PluginInstalled: true,
 			Installable:     false,
 		},
@@ -49,7 +49,7 @@ func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, e
 			ChannelID:       "qqbot",
 			DisplayName:     "QQ Bot",
 			Enabled:         qqbotCfg.Enabled,
-			Configured:      strings.TrimSpace(qqbotCfg.AppID) != "" && (strings.TrimSpace(qqbotCfg.ClientSecret) != "" || strings.TrimSpace(qqbotCfg.ClientSecretFile) != ""),
+			Configured:      qqbotCfg.AppID != "" && (qqbotCfg.ClientSecret != "" || qqbotCfg.ClientSecretFile != ""),
 			PluginInstalled: qqbotPlugin.Installed,
 			Installable:     true,
 		},
@@ -103,12 +103,7 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 }
 
 func (s *Service) UpdateQQBotChannel(ctx context.Context, update QQBotChannelUpdate) (QQBotChannelResource, error) {
-	update.AppID = strings.TrimSpace(update.AppID)
 	update.AllowFrom = normalizeStringList(update.AllowFrom)
-	update.ImageServerBaseURL = strings.TrimSpace(update.ImageServerBaseURL)
-	if update.AppID == "" {
-		return QQBotChannelResource{}, fmt.Errorf("appId is required")
-	}
 	cfg, err := s.store.UpdateQQBotChannel(ctx, update)
 	if err != nil {
 		return QQBotChannelResource{}, err
@@ -164,8 +159,8 @@ func (s *Service) GetModelSetting(ctx context.Context) (ModelSettingResource, er
 }
 
 func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (ModelSettingResource, error) {
-	if strings.TrimSpace(defaultModel) == "" {
-		return ModelSettingResource{}, fmt.Errorf("defaultModel is required")
+	if defaultModel == "" {
+		return ModelSettingResource{}, &InputError{Message: "defaultModel is required"}
 	}
 	if err := s.cli.SetDefaultModel(ctx, defaultModel); err != nil {
 		return ModelSettingResource{}, err
@@ -190,9 +185,8 @@ func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummaryResource,
 }
 
 func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderResource, error) {
-	provider = strings.TrimSpace(provider)
 	if provider == "" {
-		return ProviderResource{}, fmt.Errorf("provider is required")
+		return ProviderResource{}, &InputError{Message: "provider is required"}
 	}
 
 	snapshot, err := s.cache.Snapshot(ctx)
@@ -202,7 +196,7 @@ func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderRes
 
 	item, ok := snapshot.providerByID[provider]
 	if !ok {
-		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
+		return ProviderResource{}, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	item.ProfileLabels = append([]string(nil), item.ProfileLabels...)
 	item.OAuthProviders = append([]string(nil), item.OAuthProviders...)
@@ -210,15 +204,8 @@ func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderRes
 }
 
 func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, apiKey string) (ProviderResource, error) {
-	provider = strings.TrimSpace(provider)
-	if provider == "" {
-		return ProviderResource{}, fmt.Errorf("provider is required")
-	}
 	if !supportsAPIKeyProvider(provider) {
-		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
-	}
-	if strings.TrimSpace(apiKey) == "" {
-		return ProviderResource{}, fmt.Errorf("apiKey is required")
+		return ProviderResource{}, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	if err := s.store.UpsertProviderAPIKey(ctx, provider, apiKey); err != nil {
 		return ProviderResource{}, err
@@ -231,7 +218,7 @@ func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, ap
 
 func (s *Service) DisconnectProvider(ctx context.Context, provider string) (ProviderResource, error) {
 	if !isManagedProvider(provider) {
-		return ProviderResource{}, fmt.Errorf("unsupported provider: %s", provider)
+		return ProviderResource{}, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	if err := s.store.DisconnectProvider(ctx, provider); err != nil {
 		return ProviderResource{}, err
@@ -251,9 +238,6 @@ func (s *Service) GetTelegramChannel() (TelegramChannelResource, error) {
 }
 
 func (s *Service) UpdateTelegramChannel(ctx context.Context, update TelegramChannelUpdate) (TelegramChannelResource, error) {
-	if err := validateTelegramPolicies(update.DMPolicy, update.GroupPolicy); err != nil {
-		return TelegramChannelResource{}, err
-	}
 	normalizedAllowFrom, err := normalizeTelegramAllowFrom(update.AllowFrom, update.DMPolicy)
 	if err != nil {
 		return TelegramChannelResource{}, err
@@ -279,12 +263,12 @@ func (s *Service) TestTelegramChannel(ctx context.Context, botToken string) (Tel
 	if err != nil {
 		return TelegramChannelTestResult{}, err
 	}
-	token := strings.TrimSpace(botToken)
+	token := botToken
 	if token == "" {
-		token = strings.TrimSpace(cfg.BotToken)
+		token = cfg.BotToken
 	}
 	if token == "" {
-		return TelegramChannelTestResult{}, fmt.Errorf("botToken is required")
+		return TelegramChannelTestResult{}, &InputError{Message: "botToken is required"}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.telegram.org/bot"+token+"/getMe", nil)
@@ -312,11 +296,11 @@ func (s *Service) TestTelegramChannel(ctx context.Context, botToken string) (Tel
 		return TelegramChannelTestResult{}, fmt.Errorf("decode telegram api response: %w", err)
 	}
 	if resp.StatusCode >= http.StatusBadRequest || !payload.OK {
-		message := strings.TrimSpace(payload.Description)
+		message := payload.Description
 		if message == "" {
 			message = fmt.Sprintf("telegram api returned HTTP %d", resp.StatusCode)
 		}
-		return TelegramChannelTestResult{}, fmt.Errorf("telegram token rejected: %s", message)
+		return TelegramChannelTestResult{}, &InputError{Message: fmt.Sprintf("telegram token rejected: %s", message)}
 	}
 
 	return TelegramChannelTestResult{
@@ -331,18 +315,17 @@ func (s *Service) TestTelegramChannel(ctx context.Context, botToken string) (Tel
 }
 
 func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) (AuthResetResult, error) {
-	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		provider = "openai"
 	}
 	if !isSupportedResetProvider(provider) {
-		return AuthResetResult{}, fmt.Errorf("unsupported provider: %s", provider)
+		return AuthResetResult{}, &InputError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	result, err := s.store.ResetAuth(ctx, provider, restart, s.cli)
 	if err != nil {
 		return AuthResetResult{}, err
 	}
-	_ = s.refreshCacheSync(ctx, "reset-auth")
+	s.triggerCacheRefresh("reset-auth")
 	return result, nil
 }
 
@@ -387,23 +370,31 @@ func (s *Service) ListTelegramPairings(ctx context.Context) ([]TelegramPairingRe
 }
 
 func (s *Service) ApproveTelegramPairing(ctx context.Context, code string) error {
-	return s.cli.PairingApprove(ctx, "telegram", code)
+	err := s.cli.PairingApprove(ctx, "telegram", code)
+	if err != nil && strings.Contains(err.Error(), "No pending pairing request") {
+		return &InputError{Message: "pairing code not found or has expired — ask the user to send a new message to the bot"}
+	}
+	return err
 }
 
 func (s *Service) RejectTelegramPairing(ctx context.Context, code string) error {
-	return s.cli.PairingReject(ctx, "telegram", code)
+	err := s.cli.PairingReject(ctx, "telegram", code)
+	if err != nil && strings.Contains(err.Error(), "No pending pairing request") {
+		return &InputError{Message: "pairing code not found or has expired — ask the user to send a new message to the bot"}
+	}
+	return err
 }
 
 func (s *Service) ListAuthProfiles(provider string) ([]ProfileResource, error) {
 	if provider != "" && !isManagedProvider(provider) {
-		return nil, fmt.Errorf("unsupported provider: %s", provider)
+		return nil, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	return s.store.ListAuthProfiles(provider)
 }
 
 func (s *Service) GetAuthProfile(provider, profileID string) (*ProfileResource, error) {
 	if !isManagedProvider(provider) {
-		return nil, fmt.Errorf("unsupported provider: %s", provider)
+		return nil, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	return s.store.GetAuthProfile(provider, profileID)
 }
@@ -422,9 +413,8 @@ func (s *Service) ListModelCatalogSnapshot(ctx context.Context) ([]ModelCatalogE
 }
 
 func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageToken string, pageSize int) ([]ModelCatalogEntryResource, string, error) {
-	provider = strings.TrimSpace(provider)
 	if provider == "" {
-		return nil, "", fmt.Errorf("provider is required")
+		return nil, "", &InputError{Message: "provider is required"}
 	}
 	if pageSize <= 0 {
 		pageSize = 50
@@ -443,7 +433,7 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 	}
 
 	if _, known := snapshot.providerIDs[provider]; !known {
-		return nil, "", fmt.Errorf("unsupported provider: %s", provider)
+		return nil, "", &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
 	items := snapshot.modelCatalogByProvider[provider]
 	if offset >= len(items) {
@@ -479,14 +469,14 @@ func buildTelegramChannelResource(cfg TelegramChannelConfig, action string) Tele
 		ChannelID:            "telegram",
 		DisplayName:          "Telegram",
 		Enabled:              cfg.Enabled,
-		Configured:           strings.TrimSpace(cfg.BotToken) != "" || strings.TrimSpace(cfg.TokenFile) != "",
+		Configured:           cfg.BotToken != "" || cfg.TokenFile != "",
 		Mode:                 telegramMode(cfg),
-		BotTokenConfigured:   strings.TrimSpace(cfg.BotToken) != "" || strings.TrimSpace(cfg.TokenFile) != "",
+		BotTokenConfigured:   cfg.BotToken != "" || cfg.TokenFile != "",
 		DMPolicy:             defaultString(cfg.DMPolicy, "pairing"),
 		AllowFrom:            append([]string(nil), cfg.AllowFrom...),
 		GroupPolicy:          defaultString(cfg.GroupPolicy, "allowlist"),
 		RequireMention:       cfg.RequireMention,
-		WebhookURLConfigured: strings.TrimSpace(cfg.WebhookURL) != "",
+		WebhookURLConfigured: cfg.WebhookURL != "",
 		LastAppliedAction:    action,
 	}
 }
@@ -501,10 +491,10 @@ func buildQQBotChannelResource(cfg QQBotChannelConfig, plugin PluginResource, ac
 		PluginStatus:           plugin.Status,
 		PluginSpec:             qqBotPluginSpec,
 		Enabled:                cfg.Enabled,
-		Configured:             strings.TrimSpace(cfg.AppID) != "" && (strings.TrimSpace(cfg.ClientSecret) != "" || strings.TrimSpace(cfg.ClientSecretFile) != ""),
+		Configured:             cfg.AppID != "" && (cfg.ClientSecret != "" || cfg.ClientSecretFile != ""),
 		AppID:                  cfg.AppID,
-		AppIDConfigured:        strings.TrimSpace(cfg.AppID) != "",
-		ClientSecretConfigured: strings.TrimSpace(cfg.ClientSecret) != "" || strings.TrimSpace(cfg.ClientSecretFile) != "",
+		AppIDConfigured:        cfg.AppID != "",
+		ClientSecretConfigured: cfg.ClientSecret != "" || cfg.ClientSecretFile != "",
 		AllowFrom:              append([]string(nil), cfg.AllowFrom...),
 		MarkdownSupport:        cfg.MarkdownSupport,
 		ImageServerBaseURL:     cfg.ImageServerBaseURL,
@@ -513,25 +503,10 @@ func buildQQBotChannelResource(cfg QQBotChannelConfig, plugin PluginResource, ac
 }
 
 func telegramMode(cfg TelegramChannelConfig) string {
-	if strings.TrimSpace(cfg.WebhookURL) != "" {
+	if cfg.WebhookURL != "" {
 		return "webhook"
 	}
 	return "polling"
-}
-
-func validateTelegramPolicies(dmPolicy string, groupPolicy string) error {
-	switch dmPolicy {
-	case "pairing", "allowlist", "open", "disabled":
-	default:
-		return fmt.Errorf("unsupported dmPolicy: %s", dmPolicy)
-	}
-
-	switch groupPolicy {
-	case "allowlist", "open", "disabled":
-	default:
-		return fmt.Errorf("unsupported groupPolicy: %s", groupPolicy)
-	}
-	return nil
 }
 
 func normalizeTelegramAllowFrom(values []string, dmPolicy string) ([]string, error) {
@@ -556,11 +531,11 @@ func normalizeTelegramAllowFrom(values []string, dmPolicy string) ([]string, err
 
 	if dmPolicy == "open" {
 		if len(out) != 1 || out[0] != "*" {
-			return nil, fmt.Errorf(`dmPolicy "open" requires allowFrom to be "*"`)
+			return nil, &InputError{Message: `dmPolicy "open" requires allowFrom to be "*"`}
 		}
 	}
 	if dmPolicy == "allowlist" && len(out) == 0 {
-		return nil, fmt.Errorf(`dmPolicy "allowlist" requires at least one Telegram user ID in allowFrom`)
+		return nil, &InputError{Message: `dmPolicy "allowlist" requires at least one Telegram user ID in allowFrom`}
 	}
 	return out, nil
 }
@@ -592,9 +567,9 @@ func pluginByID(items []PluginResource, id string) PluginResource {
 }
 
 func parseTelegramUserID(value string) (int64, error) {
-	id, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	id, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("allowFrom must contain numeric Telegram user IDs or *")
+		return 0, &InputError{Message: "allowFrom must contain numeric Telegram user IDs or *"}
 	}
 	return id, nil
 }
@@ -649,15 +624,14 @@ func sanitizeModelKey(key string) string {
 }
 
 func providerFromModelKey(key string) string {
-	raw := strings.TrimSpace(key)
-	if raw == "" {
+	if key == "" {
 		return ""
 	}
-	parts := strings.SplitN(raw, "/", 2)
+	parts := strings.SplitN(key, "/", 2)
 	if len(parts) == 0 {
 		return ""
 	}
-	return strings.TrimSpace(parts[0])
+	return parts[0]
 }
 
 func providerDisplayName(provider string) string {
@@ -696,7 +670,6 @@ func humanizeProviderID(provider string) string {
 }
 
 func isCanonicalProviderID(provider string) bool {
-	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		return false
 	}
@@ -720,7 +693,6 @@ func isKnownProvider(provider string) bool {
 }
 
 func isWhitelistedProviderID(provider string, discovered map[string]struct{}) bool {
-	provider = strings.TrimSpace(provider)
 	if !isCanonicalProviderID(provider) {
 		return false
 	}
