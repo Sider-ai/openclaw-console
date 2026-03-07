@@ -41,3 +41,4 @@ jobs:
         with:
           version: v2.11
           working-directory: server
+          github-token: ${{ secrets.GITHUB_TOKEN }}
