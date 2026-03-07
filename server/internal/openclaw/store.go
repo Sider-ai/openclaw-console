@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -44,7 +45,7 @@ type AuthCredential struct {
 	TokenRef  string `json:"tokenRef,omitempty"`
 }
 
-func (s *Store) UpsertProviderAPIKey(_ context.Context, provider string, apiKey string) error {
+func (s *Store) UpsertProviderAPIKey(ctx context.Context, provider string, apiKey string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -74,7 +75,7 @@ func (s *Store) UpsertProviderAPIKey(_ context.Context, provider string, apiKey 
 		return err
 	}
 
-	return maybeRestartOpenClaw()
+	return maybeRestartOpenClaw(ctx)
 }
 
 func (s *Store) DisconnectProvider(ctx context.Context, provider string) error {
@@ -114,7 +115,7 @@ func (s *Store) DisconnectProvider(ctx context.Context, provider string) error {
 		return err
 	}
 
-	return maybeRestartOpenClaw()
+	return maybeRestartOpenClaw(ctx)
 }
 
 func (s *Store) GetTelegramChannelConfig() (TelegramChannelConfig, error) {
@@ -128,7 +129,10 @@ func (s *Store) GetTelegramChannelConfig() (TelegramChannelConfig, error) {
 	return readTelegramChannelConfig(cfg), nil
 }
 
-func (s *Store) UpdateTelegramChannel(_ context.Context, update TelegramChannelUpdate) (TelegramChannelConfig, error) {
+func (s *Store) UpdateTelegramChannel(
+	ctx context.Context,
+	update TelegramChannelUpdate,
+) (TelegramChannelConfig, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -155,10 +159,10 @@ func (s *Store) UpdateTelegramChannel(_ context.Context, update TelegramChannelU
 	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
 		return TelegramChannelConfig{}, err
 	}
-	return current, maybeRestartOpenClaw()
+	return current, maybeRestartOpenClaw(ctx)
 }
 
-func (s *Store) DisconnectTelegramChannel(_ context.Context) error {
+func (s *Store) DisconnectTelegramChannel(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -173,7 +177,7 @@ func (s *Store) DisconnectTelegramChannel(_ context.Context) error {
 	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
 		return err
 	}
-	return maybeRestartOpenClaw()
+	return maybeRestartOpenClaw(ctx)
 }
 
 func (s *Store) GetQQBotChannelConfig() (QQBotChannelConfig, error) {
@@ -187,7 +191,7 @@ func (s *Store) GetQQBotChannelConfig() (QQBotChannelConfig, error) {
 	return readQQBotChannelConfig(cfg), nil
 }
 
-func (s *Store) UpdateQQBotChannel(_ context.Context, update QQBotChannelUpdate) (QQBotChannelConfig, error) {
+func (s *Store) UpdateQQBotChannel(ctx context.Context, update QQBotChannelUpdate) (QQBotChannelConfig, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -213,10 +217,10 @@ func (s *Store) UpdateQQBotChannel(_ context.Context, update QQBotChannelUpdate)
 	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
 		return QQBotChannelConfig{}, err
 	}
-	return current, maybeRestartOpenClaw()
+	return current, maybeRestartOpenClaw(ctx)
 }
 
-func (s *Store) DisconnectQQBotChannel(_ context.Context) error {
+func (s *Store) DisconnectQQBotChannel(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -231,7 +235,7 @@ func (s *Store) DisconnectQQBotChannel(_ context.Context) error {
 	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
 		return err
 	}
-	return maybeRestartOpenClaw()
+	return maybeRestartOpenClaw(ctx)
 }
 
 func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli *CLI) (AuthResetResult, error) {
@@ -278,7 +282,7 @@ func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cl
 		return AuthResetResult{}, err
 	}
 
-	if provider == "all" {
+	if provider == ProviderAll {
 		authRaw["profiles"] = map[string]any{}
 		authRaw["usageStats"] = map[string]any{}
 		setNestedMapValue(cfgRaw, []string{"auth", "profiles"}, map[string]any{})
@@ -383,14 +387,14 @@ func (s *Store) MergeCodexFromTemp(ctx context.Context, tmp Paths, defaultModel 
 
 	merged := false
 	for profileID, cred := range tmpStore.Profiles {
-		if cred.Provider != "openai-codex" {
+		if cred.Provider != ProviderOpenAICodex {
 			continue
 		}
 		targetStore.Profiles[profileID] = cred
 		merged = true
 	}
 	if !merged {
-		return fmt.Errorf("no openai-codex profiles found in temp auth store")
+		return errors.New("no openai-codex profiles found in temp auth store")
 	}
 	if err := s.writeJSONAtomic(s.paths.AuthStorePath, targetStore); err != nil {
 		return err
@@ -402,11 +406,11 @@ func (s *Store) MergeCodexFromTemp(ctx context.Context, tmp Paths, defaultModel 
 	}
 	profiles := getNestedMap(cfg, []string{"auth", "profiles"})
 	for profileID, cred := range targetStore.Profiles {
-		if cred.Provider != "openai-codex" {
+		if cred.Provider != ProviderOpenAICodex {
 			continue
 		}
 		profiles[profileID] = map[string]any{
-			"provider": "openai-codex",
+			"provider": ProviderOpenAICodex,
 			"mode":     "oauth",
 		}
 	}
@@ -421,7 +425,7 @@ func (s *Store) MergeCodexFromTemp(ctx context.Context, tmp Paths, defaultModel 
 		}
 	}
 
-	return maybeRestartOpenClaw()
+	return maybeRestartOpenClaw(ctx)
 }
 
 func (s *Store) readRawJSONMap(path string) (map[string]any, error) {
@@ -791,7 +795,7 @@ func readMapField(root map[string]any, key string) map[string]any {
 func matchingProfileIDs(profiles map[string]any, provider string) []string {
 	ids := make([]string, 0, len(profiles))
 	for id, raw := range profiles {
-		if provider == "all" || profileProvider(raw) == provider {
+		if provider == ProviderAll || profileProvider(raw) == provider {
 			ids = append(ids, id)
 		}
 	}
@@ -819,30 +823,30 @@ func profileProvider(raw any) string {
 	return p
 }
 
-func maybeRestartOpenClaw() error {
-	_, err := restartOpenClaw()
+func maybeRestartOpenClaw(ctx context.Context) error {
+	_, err := restartOpenClaw(ctx)
 	return err
 }
 
-func restartOpenClaw() (bool, error) {
+func restartOpenClaw(ctx context.Context) (bool, error) {
 	if os.Getenv("OPENCLAW_ADMIN_SKIP_RESTART") == "1" {
 		return false, nil
 	}
 	if _, err := exec.LookPath("systemctl"); err != nil {
-		return restartOpenClawGateway()
+		return restartOpenClawGateway(ctx)
 	}
-	cmd := exec.Command("systemctl", "restart", "openclaw")
+	cmd := exec.CommandContext(ctx, "systemctl", "restart", "openclaw")
 	if err := cmd.Run(); err != nil {
 		return false, fmt.Errorf("restart openclaw service: %w", err)
 	}
 	return true, nil
 }
 
-func restartOpenClawGateway() (bool, error) {
+func restartOpenClawGateway(ctx context.Context) (bool, error) {
 	if _, err := exec.LookPath("openclaw"); err != nil {
-		return false, nil
+		return false, err
 	}
-	cmd := exec.Command("openclaw", "gateway", "restart")
+	cmd := exec.CommandContext(ctx, "openclaw", "gateway", "restart")
 	if err := cmd.Run(); err != nil {
 		return false, fmt.Errorf("restart openclaw gateway: %w", err)
 	}

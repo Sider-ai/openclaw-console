@@ -2,9 +2,11 @@ package openclaw
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -75,7 +77,7 @@ func (c *serviceCache) Snapshot(ctx context.Context) (*serviceSnapshot, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if c.snapshot == nil {
-		return nil, fmt.Errorf("cache unavailable")
+		return nil, errors.New("cache unavailable")
 	}
 	return c.snapshot, nil
 }
@@ -211,10 +213,10 @@ func buildServiceSnapshot(status modelsStatus, list modelsList) *serviceSnapshot
 		}
 	}
 
-	for provider := range modelCatalogByProvider {
-		sort.Slice(modelCatalogByProvider[provider], func(i, j int) bool {
-			left := strings.ToLower(modelCatalogByProvider[provider][i].DisplayName + modelCatalogByProvider[provider][i].ModelKey)
-			right := strings.ToLower(modelCatalogByProvider[provider][j].DisplayName + modelCatalogByProvider[provider][j].ModelKey)
+	for _, items := range modelCatalogByProvider {
+		sort.Slice(items, func(i, j int) bool {
+			left := strings.ToLower(items[i].DisplayName + items[i].ModelKey)
+			right := strings.ToLower(items[j].DisplayName + items[j].ModelKey)
 			return left < right
 		})
 	}
@@ -287,7 +289,11 @@ func buildServiceSnapshot(status modelsStatus, list modelsList) *serviceSnapshot
 	}
 }
 
-func buildProviderResourceFromStatus(provider string, status modelsStatus, discovered map[string]struct{}) ProviderResource {
+func buildProviderResourceFromStatus(
+	provider string,
+	status modelsStatus,
+	discovered map[string]struct{},
+) ProviderResource {
 	resource := ProviderResource{
 		Name:           "providers/" + provider,
 		ProviderID:     provider,
@@ -303,23 +309,18 @@ func buildProviderResourceFromStatus(provider string, status modelsStatus, disco
 		resource.ProfileLabels = append(resource.ProfileLabels, p.Profiles.Labels...)
 		switch {
 		case p.Profiles.OAuth > 0:
-			resource.Connection = "CONNECTED"
+			resource.Connection = ConnectionConnected
 			resource.AuthType = "OAUTH"
 		case p.Profiles.APIKey > 0:
-			resource.Connection = "CONNECTED"
+			resource.Connection = ConnectionConnected
 			resource.AuthType = "API_KEY"
 		case p.Profiles.Token > 0:
-			resource.Connection = "CONNECTED"
+			resource.Connection = ConnectionConnected
 			resource.AuthType = "TOKEN"
 		}
 	}
 
-	for _, missing := range status.Auth.MissingProvidersInUse {
-		if missing == provider {
-			resource.MissingInUse = true
-			break
-		}
-	}
+	resource.MissingInUse = slices.Contains(status.Auth.MissingProvidersInUse, provider)
 
 	seenOAuthProvider := map[string]struct{}{}
 	for _, item := range status.Auth.ProvidersWithOAuth {

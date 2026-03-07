@@ -1,10 +1,10 @@
 package api
 
-type APIError struct {
-	Error APIErrorBody `json:"error"`
+type Error struct {
+	Error ErrorBody `json:"error"`
 }
 
-type APIErrorBody struct {
+type ErrorBody struct {
 	Code    int    `json:"code"`
 	Status  string `json:"status"`
 	Message string `json:"message"`
@@ -35,9 +35,9 @@ type submitRedirectRequest struct {
 type patchTelegramChannelRequest struct {
 	Enabled        bool     `json:"enabled"`
 	BotToken       *string  `json:"botToken,omitempty"`
-	DMPolicy       string   `json:"dmPolicy" validate:"required,oneof=pairing allowlist open disabled"`
+	DMPolicy       string   `json:"dmPolicy"            validate:"required,oneof=pairing allowlist open disabled"`
 	AllowFrom      []string `json:"allowFrom,omitempty"`
-	GroupPolicy    string   `json:"groupPolicy" validate:"required,oneof=allowlist open disabled"`
+	GroupPolicy    string   `json:"groupPolicy"         validate:"required,oneof=allowlist open disabled"`
 	RequireMention bool     `json:"requireMention"`
 }
 
@@ -47,7 +47,7 @@ type testTelegramChannelRequest struct {
 
 type patchQQBotChannelRequest struct {
 	Enabled            bool     `json:"enabled"`
-	AppID              string   `json:"appId" validate:"required"`
+	AppID              string   `json:"appId"                        validate:"required"`
 	ClientSecret       *string  `json:"clientSecret,omitempty"`
 	AllowFrom          []string `json:"allowFrom,omitempty"`
 	MarkdownSupport    bool     `json:"markdownSupport"`

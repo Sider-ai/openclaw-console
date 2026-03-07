@@ -2,6 +2,13 @@ package openclaw
 
 import "time"
 
+const (
+	ConnectionConnected = "CONNECTED"
+	ProviderOpenAI      = "openai"
+	ProviderOpenAICodex = "openai-codex"
+	ProviderAll         = "all"
+)
+
 type NotFoundError struct{ Message string }
 
 func (e *NotFoundError) Error() string { return e.Message }

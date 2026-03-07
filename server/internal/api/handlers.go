@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 )
 
 func writeServiceError(w http.ResponseWriter, err error) {
@@ -482,7 +483,7 @@ func writeInternalError(w http.ResponseWriter, err error) {
 }
 
 func writeError(w http.ResponseWriter, code int, status, message string) {
-	writeJSON(w, code, APIError{Error: APIErrorBody{
+	writeJSON(w, code, Error{Error: ErrorBody{
 		Code:    code,
 		Status:  status,
 		Message: message,

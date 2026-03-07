@@ -38,7 +38,8 @@ func main() {
 	authUsername := os.Getenv("OPENCLAW_CONSOLE_AUTH_USER")
 	authPassword := os.Getenv("OPENCLAW_CONSOLE_AUTH_PASSWORD")
 	if (authUsername == "") != (authPassword == "") {
-		log.Warn().Msg("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
+		log.Warn().
+			Msg("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
 		authUsername = ""
 		authPassword = ""
 	}

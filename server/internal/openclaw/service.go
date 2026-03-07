@@ -10,12 +10,24 @@ import (
 	"time"
 )
 
-const qqBotPluginSpec = "@sliverp/qqbot@1.5.2"
+const (
+	qqBotPluginSpec   = "@sliverp/qqbot@1.5.2"
+	maxPageSize       = 200
+	httpClientTimeout = 10 * time.Second
+)
 
 type Service struct {
 	cli   *CLI
 	store *Store
 	cache *serviceCache
+}
+
+func NewService(cli *CLI, store *Store) *Service {
+	return &Service{
+		cli:   cli,
+		store: store,
+		cache: newServiceCache(cli),
+	}
 }
 
 func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, error) {
@@ -79,7 +91,7 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 	if err != nil {
 		return PluginInstallResult{}, err
 	}
-	restarted, restartErr := restartOpenClaw()
+	restarted, restartErr := restartOpenClaw(ctx)
 	if restartErr != nil {
 		return PluginInstallResult{}, restartErr
 	}
@@ -120,14 +132,6 @@ func (s *Service) DisconnectQQBotChannel(ctx context.Context) (QQBotChannelResou
 		return QQBotChannelResource{}, err
 	}
 	return s.GetQQBotChannel(ctx)
-}
-
-func NewService(cli *CLI, store *Store) *Service {
-	return &Service{
-		cli:   cli,
-		store: store,
-		cache: newServiceCache(cli),
-	}
 }
 
 func (s *Service) Warmup(ctx context.Context) error {
@@ -177,11 +181,7 @@ func (s *Service) ListProviders(ctx context.Context) ([]ProviderSummaryResource,
 		return nil, err
 	}
 
-	out := make([]ProviderSummaryResource, 0, len(snapshot.providers))
-	for _, provider := range snapshot.providers {
-		out = append(out, provider)
-	}
-	return out, nil
+	return append([]ProviderSummaryResource(nil), snapshot.providers...), nil
 }
 
 func (s *Service) GetProvider(ctx context.Context, provider string) (ProviderResource, error) {
@@ -237,7 +237,9 @@ func (s *Service) GetTelegramChannel() (TelegramChannelResource, error) {
 	return buildTelegramChannelResource(cfg, ""), nil
 }
 
-func (s *Service) UpdateTelegramChannel(ctx context.Context, update TelegramChannelUpdate) (TelegramChannelResource, error) {
+func (s *Service) UpdateTelegramChannel(
+	ctx context.Context, update TelegramChannelUpdate,
+) (TelegramChannelResource, error) {
 	normalizedAllowFrom, err := normalizeTelegramAllowFrom(update.AllowFrom, update.DMPolicy)
 	if err != nil {
 		return TelegramChannelResource{}, err
@@ -276,7 +278,7 @@ func (s *Service) TestTelegramChannel(ctx context.Context, botToken string) (Tel
 		return TelegramChannelTestResult{}, err
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: httpClientTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return TelegramChannelTestResult{}, fmt.Errorf("telegram api request failed: %w", err)
@@ -316,7 +318,7 @@ func (s *Service) TestTelegramChannel(ctx context.Context, botToken string) (Tel
 
 func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) (AuthResetResult, error) {
 	if provider == "" {
-		provider = "openai"
+		provider = ProviderOpenAI
 	}
 	if !isSupportedResetProvider(provider) {
 		return AuthResetResult{}, &InputError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
@@ -372,7 +374,9 @@ func (s *Service) ListTelegramPairings(ctx context.Context) ([]TelegramPairingRe
 func (s *Service) ApproveTelegramPairing(ctx context.Context, code string) error {
 	err := s.cli.PairingApprove(ctx, "telegram", code)
 	if err != nil && strings.Contains(err.Error(), "No pending pairing request") {
-		return &InputError{Message: "pairing code not found or has expired — ask the user to send a new message to the bot"}
+		return &InputError{
+			Message: "pairing code not found or has expired — ask the user to send a new message to the bot",
+		}
 	}
 	return err
 }
@@ -380,7 +384,9 @@ func (s *Service) ApproveTelegramPairing(ctx context.Context, code string) error
 func (s *Service) RejectTelegramPairing(ctx context.Context, code string) error {
 	err := s.cli.PairingReject(ctx, "telegram", code)
 	if err != nil && strings.Contains(err.Error(), "No pending pairing request") {
-		return &InputError{Message: "pairing code not found or has expired — ask the user to send a new message to the bot"}
+		return &InputError{
+			Message: "pairing code not found or has expired — ask the user to send a new message to the bot",
+		}
 	}
 	return err
 }
@@ -412,15 +418,19 @@ func (s *Service) ListModelCatalogSnapshot(ctx context.Context) ([]ModelCatalogE
 	return out, nil
 }
 
-func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageToken string, pageSize int) ([]ModelCatalogEntryResource, string, error) {
+func (s *Service) ListModelCatalogEntries(
+	ctx context.Context,
+	provider, pageToken string,
+	pageSize int,
+) ([]ModelCatalogEntryResource, string, error) {
 	if provider == "" {
 		return nil, "", &InputError{Message: "provider is required"}
 	}
 	if pageSize <= 0 {
 		pageSize = 50
 	}
-	if pageSize > 200 {
-		pageSize = 200
+	if pageSize > maxPageSize {
+		pageSize = maxPageSize
 	}
 	offset, err := DecodePageToken(pageToken)
 	if err != nil {
@@ -456,7 +466,7 @@ func (s *Service) ListModelCatalogEntries(ctx context.Context, provider, pageTok
 
 func isManagedProvider(provider string) bool {
 	switch provider {
-	case "openai-codex":
+	case ProviderOpenAICodex:
 		return true
 	default:
 		return supportsAPIKeyProvider(provider)
@@ -593,7 +603,7 @@ func supportsAPIKeyProvider(provider string) bool {
 		"mistral",
 		"moonshot",
 		"nvidia",
-		"openai",
+		ProviderOpenAI,
 		"opencode",
 		"openrouter",
 		"qianfan",
@@ -611,7 +621,7 @@ func supportsAPIKeyProvider(provider string) bool {
 
 func isSupportedResetProvider(provider string) bool {
 	switch provider {
-	case "openai", "openai-codex", "all":
+	case ProviderOpenAI, ProviderOpenAICodex, ProviderAll:
 		return true
 	default:
 		return false
@@ -636,9 +646,9 @@ func providerFromModelKey(key string) string {
 
 func providerDisplayName(provider string) string {
 	switch provider {
-	case "openai":
+	case ProviderOpenAI:
 		return "OpenAI"
-	case "openai-codex":
+	case ProviderOpenAICodex:
 		return "OpenAI Codex"
 	case "amazon-bedrock":
 		return "Amazon Bedrock"
@@ -673,7 +683,7 @@ func isCanonicalProviderID(provider string) bool {
 	if provider == "" {
 		return false
 	}
-	for i := 0; i < len(provider); i++ {
+	for i := range len(provider) {
 		ch := provider[i]
 		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' {
 			continue
@@ -685,7 +695,7 @@ func isCanonicalProviderID(provider string) bool {
 
 func isKnownProvider(provider string) bool {
 	switch provider {
-	case "amazon-bedrock", "github-copilot", "openai-codex":
+	case "amazon-bedrock", "github-copilot", ProviderOpenAICodex:
 		return true
 	default:
 		return supportsAPIKeyProvider(provider)

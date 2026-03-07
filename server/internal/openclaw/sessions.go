@@ -18,6 +18,10 @@ import (
 )
 
 const (
+	sessionIDLength   = 12
+	sessionExpiry     = 10 * time.Minute
+	outputTailMaxSize = 64
+
 	sessionStateCreated            = "CREATED"
 	sessionStateLaunching          = "LAUNCHING_ONBOARD"
 	sessionStateAwaitingRedirect   = "AWAITING_REDIRECT_URL"
@@ -67,8 +71,9 @@ func NewSessionManager(cli *CLI, store *Store) *SessionManager {
 	}
 }
 
+//nolint:revive // ctx intentionally unused; PTY process outlives the request
 func (m *SessionManager) Create(ctx context.Context, defaultModel string) (CodexAuthSessionResource, error) {
-	id, err := randomID(12)
+	id, err := randomID(sessionIDLength)
 	if err != nil {
 		return CodexAuthSessionResource{}, err
 	}
@@ -85,7 +90,7 @@ func (m *SessionManager) Create(ctx context.Context, defaultModel string) (Codex
 		"--accept-risk",
 		"--mode", "local",
 		"--flow", "manual",
-		"--auth-choice", "openai-codex",
+		"--auth-choice", ProviderOpenAICodex,
 		"--workspace", filepath.Join(tmpHome, "workspace"),
 		"--skip-channels",
 		"--skip-skills",
@@ -113,14 +118,14 @@ func (m *SessionManager) Create(ctx context.Context, defaultModel string) (Codex
 		id:               id,
 		state:            sessionStateLaunching,
 		createdAt:        time.Now(),
-		expiresAt:        time.Now().Add(10 * time.Minute),
+		expiresAt:        time.Now().Add(sessionExpiry),
 		defaultModelHint: defaultModel,
 		tmpPaths:         paths,
 		cmd:              cmd,
 		ptmx:             ptmx,
 		cancel:           cancel,
 		done:             make(chan error, 1),
-		outputTail:       make([]string, 0, 64),
+		outputTail:       make([]string, 0, outputTailMaxSize),
 	}
 
 	m.mu.Lock()
@@ -158,7 +163,9 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 	if s.state != sessionStateAwaitingRedirect {
 		res := m.toResource(s)
 		m.mu.Unlock()
-		return CodexAuthSessionResource{}, &ConflictError{Message: fmt.Sprintf("session not ready for redirect: %s", res.State)}
+		return CodexAuthSessionResource{}, &ConflictError{
+			Message: fmt.Sprintf("session not ready for redirect: %s", res.State),
+		}
 	}
 	s.state = sessionStateExchangingToken
 	m.mu.Unlock()
@@ -190,25 +197,16 @@ func (m *SessionManager) SubmitRedirect(ctx context.Context, id, redirectURL str
 			if !ready {
 				continue
 			}
-			if err := m.mergeFromTemp(s); err == nil {
-				s.cancel()
-				_ = s.ptmx.Close()
-			} else {
-				s.cancel()
-				_ = s.ptmx.Close()
-			}
+			_ = m.mergeFromTemp(s)
+			s.cancel()
+			_ = s.ptmx.Close()
 			done = true
 		case <-timeout.C:
 			// Some OpenClaw onboard flows persist OAuth credentials but do not exit promptly.
 			// Attempt a best-effort merge before marking timeout.
-			if err := m.mergeFromTemp(s); err == nil {
-				s.cancel()
-				_ = s.ptmx.Close()
-			} else {
-				// Merge failed; stop lingering onboard process to avoid orphaned sessions.
-				s.cancel()
-				_ = s.ptmx.Close()
-			}
+			_ = m.mergeFromTemp(s)
+			s.cancel()
+			_ = s.ptmx.Close()
 			done = true
 		case err := <-s.done:
 			if err != nil {
@@ -234,7 +232,8 @@ func (m *SessionManager) Cancel(id string) (CodexAuthSessionResource, error) {
 	if !ok {
 		return CodexAuthSessionResource{}, &NotFoundError{Message: "session not found"}
 	}
-	if s.state == sessionStateSucceeded || s.state == sessionStateFailed || s.state == sessionStateCancelled || s.state == sessionStateExpired {
+	if s.state == sessionStateSucceeded || s.state == sessionStateFailed || s.state == sessionStateCancelled ||
+		s.state == sessionStateExpired {
 		return m.toResource(s), nil
 	}
 	s.state = sessionStateCancelled
@@ -250,7 +249,7 @@ func (m *SessionManager) captureOutput(s *codexSession) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		m.mu.Lock()
-		if len(s.outputTail) >= 64 {
+		if len(s.outputTail) >= outputTailMaxSize {
 			s.outputTail = s.outputTail[1:]
 		}
 		s.outputTail = append(s.outputTail, line)
@@ -276,7 +275,8 @@ func (m *SessionManager) watchDone(s *codexSession) {
 	state := s.state
 	m.mu.Unlock()
 
-	if state == sessionStateCancelled || state == sessionStateExpired || state == sessionStateSucceeded || state == sessionStateFailed {
+	if state == sessionStateCancelled || state == sessionStateExpired || state == sessionStateSucceeded ||
+		state == sessionStateFailed {
 		return
 	}
 	if err != nil {
@@ -334,7 +334,7 @@ func (m *SessionManager) tempHasCodexProfile(s *codexSession) (bool, error) {
 		return false, err
 	}
 	for _, cred := range tempStore.Profiles {
-		if cred.Provider == "openai-codex" {
+		if cred.Provider == ProviderOpenAICodex {
 			return true, nil
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -101,7 +102,7 @@ func (c *CLI) ModelsList(ctx context.Context, provider string) (modelsList, erro
 
 func (c *CLI) SetDefaultModel(ctx context.Context, model string) error {
 	if model == "" {
-		return fmt.Errorf("model is required")
+		return errors.New("model is required")
 	}
 	_, err := c.run(ctx, "openclaw", "models", "set", model)
 	return err
