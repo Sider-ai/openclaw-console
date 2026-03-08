@@ -27,7 +27,8 @@ type serviceSnapshot struct {
 }
 
 type serviceCache struct {
-	cli *CLI
+	cli   CLIRunner
+	paths Paths
 
 	mu       sync.RWMutex
 	snapshot *serviceSnapshot
@@ -36,9 +37,10 @@ type serviceCache struct {
 	refreshCh chan struct{}
 }
 
-func newServiceCache(cli *CLI) *serviceCache {
+func newServiceCache(cli CLIRunner, paths Paths) *serviceCache {
 	return &serviceCache{
 		cli:       cli,
+		paths:     paths,
 		refreshCh: make(chan struct{}, 1),
 	}
 }
@@ -50,7 +52,7 @@ func (c *serviceCache) Warmup(ctx context.Context) error {
 func (c *serviceCache) Start(ctx context.Context) {
 	c.startOnce.Do(func() {
 		go c.refreshLoop(ctx)
-		if err := c.startFileWatcher(ctx, c.cli.paths.ConfigPath, c.cli.paths.AuthStorePath); err != nil {
+		if err := c.startFileWatcher(ctx, c.paths.ConfigPath, c.paths.AuthStorePath); err != nil {
 			log.Warn().Err(err).Msg("openclaw cache file watcher disabled")
 		}
 		c.TriggerRefresh("startup")

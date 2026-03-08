@@ -17,16 +17,16 @@ const (
 )
 
 type Service struct {
-	cli   *CLI
+	cli   CLIRunner
 	store *Store
 	cache *serviceCache
 }
 
-func NewService(cli *CLI, store *Store) *Service {
+func NewService(cli CLIRunner, store *Store) *Service {
 	return &Service{
 		cli:   cli,
 		store: store,
-		cache: newServiceCache(cli),
+		cache: newServiceCache(cli, store.paths),
 	}
 }
 

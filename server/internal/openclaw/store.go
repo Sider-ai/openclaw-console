@@ -238,7 +238,7 @@ func (s *Store) DisconnectQQBotChannel(ctx context.Context) error {
 	return maybeRestartOpenClaw(ctx)
 }
 
-func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli *CLI) (AuthResetResult, error) {
+func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli CLIRunner) (AuthResetResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
