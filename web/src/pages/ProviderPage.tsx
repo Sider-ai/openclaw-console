@@ -1,8 +1,8 @@
 import { fallbackProviderLabel, providerDocsURL } from "../lib/navigation";
 import type { ModelProviderNav, Provider } from "../lib/types";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { ProviderStatusBadge } from "@/components/ProviderStatusBadge";
 
 type ProviderPageProps = {
@@ -31,51 +31,58 @@ export function ProviderPage({
 
   return (
     <>
-      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base font-semibold tracking-tight">{activeProviderLabel} Provider</h2>
-          <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
-            Docs
-          </a>
-        </div>
-        <Separator className="mb-3" />
-        <p className="text-sm text-muted-foreground">
-          {supportsAPIKey ? "Configure API key authentication for this provider." : "This provider page is read-only for now. You can view provider status."}
-        </p>
-      </section>
+      <Card className="shadow-sm ring-1 ring-border/60">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">{activeProviderLabel} Provider</CardTitle>
+            <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
+              Docs
+            </a>
+          </div>
+          <CardDescription>
+            {supportsAPIKey ? "Configure API key authentication for this provider." : "This provider page is read-only for now. You can view provider status."}
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-      <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
-        <h2 className="text-base font-semibold tracking-tight mb-2">Provider Status</h2>
-        <Separator className="mb-4" />
-        <div className="flex items-center justify-between py-2">
-          <span className="text-sm">{activeProviderLabel}</span>
-          <ProviderStatusBadge provider={providerStatus} />
-        </div>
-        <details className="mt-3">
-          <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Raw Provider Status</summary>
-          <pre className="mt-2 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify(providerStatus, null, 2)}</pre>
-        </details>
-      </section>
+      <Card className="shadow-sm ring-1 ring-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Provider Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm">{activeProviderLabel}</span>
+            <ProviderStatusBadge provider={providerStatus} />
+          </div>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm text-muted-foreground">Advanced: Raw Provider Status</summary>
+            <pre className="mt-2 font-mono text-xs bg-muted/50 rounded-xl p-4 border border-border/50 overflow-auto">{JSON.stringify(providerStatus, null, 2)}</pre>
+          </details>
+        </CardContent>
+      </Card>
 
       {supportsAPIKey && (
-        <section className="rounded-xl border bg-card p-6 shadow-sm ring-1 ring-border/60">
-          <h2 className="text-base font-semibold tracking-tight mb-2">{activeProviderLabel} API Key</h2>
-          <Separator className="mb-4" />
-          <div className="flex flex-wrap gap-3 items-end">
-            <Input
-              className="w-[300px]"
-              placeholder="Provider API key"
-              value={apiKey}
-              onChange={(e) => onApiKeyChange(e.target.value)}
-            />
-            <Button onClick={onConnectAPIKey} disabled={loading || !apiKey.trim()}>
-              Connect API Key
-            </Button>
-            <Button variant="destructive" onClick={onDisconnect} disabled={loading || providerStatus?.connection !== "CONNECTED"}>
-              Disconnect
-            </Button>
-          </div>
-        </section>
+        <Card className="shadow-sm ring-1 ring-border/60">
+          <CardHeader>
+            <CardTitle className="text-base">{activeProviderLabel} API Key</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3 items-end">
+              <Input
+                className="w-[300px]"
+                placeholder="Provider API key"
+                value={apiKey}
+                onChange={(e) => onApiKeyChange(e.target.value)}
+              />
+              <Button onClick={onConnectAPIKey} disabled={loading || !apiKey.trim()}>
+                Connect API Key
+              </Button>
+              <Button variant="destructive" onClick={onDisconnect} disabled={loading || providerStatus?.connection !== "CONNECTED"}>
+                Disconnect
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </>
   );
