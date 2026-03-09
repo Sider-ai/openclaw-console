@@ -10,7 +10,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`);
+    throw new Error(
+      (data as { detail?: string })?.detail
+      || (data as { title?: string })?.title
+      || `HTTP ${res.status}`
+    );
   }
   return data as T;
 }

@@ -34,7 +34,7 @@ func main() {
 	service.StartBackground(context.Background())
 	sessions := openclaw.NewSessionManager(cli, store)
 
-	handler := api.NewHandler(service, sessions)
+	a := api.NewAPI(service, sessions)
 	authUsername := os.Getenv("OPENCLAW_CONSOLE_AUTH_USER")
 	authPassword := os.Getenv("OPENCLAW_CONSOLE_AUTH_PASSWORD")
 	if (authUsername == "") != (authPassword == "") {
@@ -43,7 +43,7 @@ func main() {
 		authUsername = ""
 		authPassword = ""
 	}
-	router := api.NewRouter(handler, api.RouterConfig{
+	router := api.NewRouter(a, api.RouterConfig{
 		AuthUsername: authUsername,
 		AuthPassword: authPassword,
 	})

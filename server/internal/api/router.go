@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog/log"
 
 	"github.com/Sider-ai/sider-openclaw-console/server/internal/ui"
 )
@@ -18,7 +19,7 @@ type RouterConfig struct {
 	AuthPassword string
 }
 
-func NewRouter(h *Handler, cfg RouterConfig) http.Handler {
+func NewRouter(a *API, cfg RouterConfig) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
@@ -31,46 +32,66 @@ func NewRouter(h *Handler, cfg RouterConfig) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/modelSettings/default", h.GetDefaultModelSetting)
-		r.Patch("/modelSettings/default", h.PatchDefaultModelSetting)
-
-		r.Get("/providers", h.ListProviders)
-		r.Get("/providers/{provider}", h.GetProvider)
-		r.Post("/providers/{provider}:connectApiKey", h.ConnectProviderAPIKey)
-		r.Post("/providers/{provider}:disconnect", h.DisconnectProvider)
-		r.Post("/auth:reset", h.ResetAuth)
-
-		r.Get("/providers/{provider}/authProfiles", h.ListAuthProfiles)
-		r.Get("/providers/{provider}/authProfiles/{auth_profile}", h.GetAuthProfile)
-
-		r.Get("/channels/telegram", h.GetTelegramChannel)
-		r.Patch("/channels/telegram", h.PatchTelegramChannel)
-		r.Post("/channels/telegram:test", h.TestTelegramChannel)
-		r.Post("/channels/telegram:disconnect", h.DisconnectTelegramChannel)
-		r.Get("/channels/telegram/pairings", h.ListTelegramPairings)
-		r.Post("/channels/telegram/pairings/{code}:approve", h.ApproveTelegramPairing)
-		r.Post("/channels/telegram/pairings/{code}:reject", h.RejectTelegramPairing)
-		r.Get("/channels", h.ListChannels)
-		r.Get("/channels/qqbot", h.GetQQBotChannel)
-		r.Patch("/channels/qqbot", h.PatchQQBotChannel)
-		r.Post("/channels/qqbot:disconnect", h.DisconnectQQBotChannel)
-
-		r.Get("/plugins", h.ListPlugins)
-		r.Post("/plugins/qqbot:install", h.InstallQQBotPlugin)
-
-		r.Get("/modelCatalogEntries", h.ListModelCatalogEntries)
-
-		r.Post("/codexAuthSessions", h.CreateCodexAuthSession)
-		r.Post("/codexAuthSessions/{codex_auth_session}:submitRedirect", h.SubmitCodexRedirect)
-		r.Post("/codexAuthSessions/{codex_auth_session}:cancel", h.CancelCodexSession)
-		r.Get("/codexAuthSessions/{codex_auth_session}", h.GetCodexAuthSession)
-	})
+	humaConfig := huma.DefaultConfig("OpenClaw Console API", "1.0.0")
+	humaAPI := humachi.New(r, humaConfig)
+	registerRoutes(a, humaAPI)
 
 	uiHandler := ui.NewHandler()
 	r.NotFound(uiHandler.ServeHTTP)
 
 	return r
+}
+
+func registerRoutes(a *API, api huma.API) {
+	// Model settings
+	huma.Get(api, "/api/v1/modelSettings/default", a.GetDefaultModelSetting)
+	huma.Patch(api, "/api/v1/modelSettings/default", a.PatchDefaultModelSetting)
+
+	// Providers
+	huma.Get(api, "/api/v1/providers", a.ListProviders)
+	huma.Get(api, "/api/v1/providers/{provider}", a.GetProvider)
+	huma.Post(api, "/api/v1/providers/{provider}:connectApiKey", a.ConnectProviderAPIKey)
+	huma.Post(api, "/api/v1/providers/{provider}:disconnect", a.DisconnectProvider)
+
+	// Auth
+	huma.Post(api, "/api/v1/auth:reset", a.ResetAuth)
+	huma.Get(api, "/api/v1/providers/{provider}/authProfiles", a.ListAuthProfiles)
+	huma.Get(api, "/api/v1/providers/{provider}/authProfiles/{auth_profile}", a.GetAuthProfile)
+
+	// Telegram channel
+	huma.Get(api, "/api/v1/channels/telegram", a.GetTelegramChannel)
+	huma.Patch(api, "/api/v1/channels/telegram", a.PatchTelegramChannel)
+	huma.Post(api, "/api/v1/channels/telegram:test", a.TestTelegramChannel)
+	huma.Post(api, "/api/v1/channels/telegram:disconnect", a.DisconnectTelegramChannel)
+	huma.Get(api, "/api/v1/channels/telegram/pairings", a.ListTelegramPairings)
+	huma.Post(api, "/api/v1/channels/telegram/pairings/{code}:approve", a.ApproveTelegramPairing)
+	huma.Post(api, "/api/v1/channels/telegram/pairings/{code}:reject", a.RejectTelegramPairing)
+
+	// Channels
+	huma.Get(api, "/api/v1/channels", a.ListChannels)
+
+	// QQ Bot channel
+	huma.Get(api, "/api/v1/channels/qqbot", a.GetQQBotChannel)
+	huma.Patch(api, "/api/v1/channels/qqbot", a.PatchQQBotChannel)
+	huma.Post(api, "/api/v1/channels/qqbot:disconnect", a.DisconnectQQBotChannel)
+
+	// Plugins
+	huma.Get(api, "/api/v1/plugins", a.ListPlugins)
+	huma.Post(api, "/api/v1/plugins/qqbot:install", a.InstallQQBotPlugin)
+
+	// Model catalog
+	huma.Get(api, "/api/v1/modelCatalogEntries", a.ListModelCatalogEntries)
+
+	// Codex auth sessions
+	huma.Register(api, huma.Operation{
+		OperationID:   "create-codex-auth-session",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/codexAuthSessions",
+		DefaultStatus: 201,
+	}, a.CreateCodexAuthSession)
+	huma.Get(api, "/api/v1/codexAuthSessions/{codex_auth_session}", a.GetCodexAuthSession)
+	huma.Post(api, "/api/v1/codexAuthSessions/{codex_auth_session}:submitRedirect", a.SubmitCodexRedirect)
+	huma.Post(api, "/api/v1/codexAuthSessions/{codex_auth_session}:cancel", a.CancelCodexSession)
 }
 
 func basicAuth(cfg RouterConfig) func(http.Handler) http.Handler {

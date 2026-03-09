@@ -480,6 +480,9 @@ linters:
       - text: 'unused-parameter'
         source: '\*http\.Request'
         linters: [ revive ]
+      - text: 'unused-parameter'
+        path: 'internal/api/handlers\.go'
+        linters: [ revive ]
       - text: 'unexported-return'
         linters: [ revive ]
       - text: 'G101'

@@ -61,7 +61,7 @@ func TestBasicAuthAcceptsValidCredentials(t *testing.T) {
 
 func TestBasicAuthSkipsHealthzAndOptions(t *testing.T) {
 	t.Run("healthz", func(t *testing.T) {
-		router := NewRouter(nil, RouterConfig{
+		router := NewRouter(NewAPI(nil, nil), RouterConfig{
 			AuthUsername: "admin",
 			AuthPassword: "secret",
 		})
