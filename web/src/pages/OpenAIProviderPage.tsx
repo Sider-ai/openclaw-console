@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import { providerDocsURL } from "../lib/navigation";
 import type { CodexSession, Provider } from "../lib/types";
 import { Button } from "@/components/ui/button";
@@ -116,11 +117,17 @@ export function OpenAIProviderPage({
               </span>
             </p>
             {codexSession.authUrl && (
-              <p className="mt-2 text-sm">
-                <a href={codexSession.authUrl} target="_blank" rel="noreferrer" className="text-primary underline-offset-4 hover:underline">
-                  Open OpenAI Login URL
+              <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+                  Please open the link below to log in with OpenAI. If the browser did not open automatically, click the button.
+                </p>
+                <a href={codexSession.authUrl} target="_blank" rel="noreferrer">
+                  <Button type="button" variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 gap-1.5">
+                    <ExternalLink className="h-4 w-4" />
+                    Open OpenAI Login URL
+                  </Button>
                 </a>
-              </p>
+              </div>
             )}
             <Textarea
               className="mt-3"
