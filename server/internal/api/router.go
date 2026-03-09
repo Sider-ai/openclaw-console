@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/subtle"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -15,8 +16,7 @@ import (
 )
 
 type RouterConfig struct {
-	AuthUsername string
-	AuthPassword string
+	AuthToken string
 }
 
 func NewRouter(a *API, cfg RouterConfig) http.Handler {
@@ -25,7 +25,7 @@ func NewRouter(a *API, cfg RouterConfig) http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(requestLogger)
 	r.Use(cors)
-	r.Use(basicAuth(cfg))
+	r.Use(bearerAuth(cfg))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -94,8 +94,8 @@ func registerRoutes(a *API, api huma.API) {
 	huma.Post(api, "/api/v1/codexAuthSessions/{codex_auth_session}:cancel", a.CancelCodexSession)
 }
 
-func basicAuth(cfg RouterConfig) func(http.Handler) http.Handler {
-	authEnabled := cfg.AuthUsername != "" && cfg.AuthPassword != ""
+func bearerAuth(cfg RouterConfig) func(http.Handler) http.Handler {
+	authEnabled := cfg.AuthToken != ""
 
 	return func(next http.Handler) http.Handler {
 		if !authEnabled {
@@ -103,16 +103,17 @@ func basicAuth(cfg RouterConfig) func(http.Handler) http.Handler {
 		}
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodOptions || r.URL.Path == "/healthz" {
+			if r.Method == http.MethodOptions || r.URL.Path == "/healthz" || !strings.HasPrefix(r.URL.Path, "/api/") {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			username, password, ok := r.BasicAuth()
-			if !ok ||
-				subtle.ConstantTimeCompare([]byte(username), []byte(cfg.AuthUsername)) != 1 ||
-				subtle.ConstantTimeCompare([]byte(password), []byte(cfg.AuthPassword)) != 1 {
-				w.Header().Set("WWW-Authenticate", `Basic realm="OpenClaw Console"`)
+			const prefix = "Bearer "
+			auth := r.Header.Get("Authorization")
+			if len(auth) <= len(prefix) ||
+				auth[:len(prefix)] != prefix ||
+				subtle.ConstantTimeCompare([]byte(auth[len(prefix):]), []byte(cfg.AuthToken)) != 1 {
+				w.Header().Set("WWW-Authenticate", `Bearer realm="OpenClaw Console"`)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}

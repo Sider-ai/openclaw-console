@@ -108,8 +108,7 @@ The same principle applies to all defensive error-masking: don't swallow, coerce
 | `OPENCLAW_HOME` | OpenClaw default | Override OpenClaw home directory |
 | `OPENCLAW_CONFIG_PATH` | OpenClaw default | Override config file path |
 | `OPENCLAW_CONSOLE_ADDR` | `:18080` | Listen address |
-| `OPENCLAW_CONSOLE_AUTH_USER` | empty | Enable HTTP Basic Auth (pair with PASSWORD) |
-| `OPENCLAW_CONSOLE_AUTH_PASSWORD` | empty | Enable HTTP Basic Auth (pair with USER) |
+| `OPENCLAW_CONSOLE_AUTH_TOKEN` | empty | Enable Bearer token auth for console access |
 | `OPENCLAW_ADMIN_SKIP_RESTART` | empty | Set to `1` to skip `systemctl restart openclaw` after config changes |
 | `VITE_ADMIN_API_BASE` | `/api` | Frontend API base URL (dev only) |
 

@@ -35,17 +35,8 @@ func main() {
 	sessions := openclaw.NewSessionManager(cli, store)
 
 	a := api.NewAPI(service, sessions)
-	authUsername := os.Getenv("OPENCLAW_CONSOLE_AUTH_USER")
-	authPassword := os.Getenv("OPENCLAW_CONSOLE_AUTH_PASSWORD")
-	if (authUsername == "") != (authPassword == "") {
-		log.Warn().
-			Msg("openclaw console auth disabled: both OPENCLAW_CONSOLE_AUTH_USER and OPENCLAW_CONSOLE_AUTH_PASSWORD must be set")
-		authUsername = ""
-		authPassword = ""
-	}
 	router := api.NewRouter(a, api.RouterConfig{
-		AuthUsername: authUsername,
-		AuthPassword: authPassword,
+		AuthToken: os.Getenv("OPENCLAW_CONSOLE_AUTH_TOKEN"),
 	})
 
 	addr := cmp.Or(os.Getenv("OPENCLAW_CONSOLE_ADDR"), ":18080")

@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
+import { useAuth } from "./hooks/useAuth";
 import { useChannelsData } from "./hooks/useChannelsData";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
@@ -11,6 +12,7 @@ import { useTelegramPairings } from "./hooks/useTelegramPairings";
 import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
+const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const ModelsPage = lazy(() => import("./pages/ModelsPage").then((m) => ({ default: m.ModelsPage })));
 const OpenAIProviderPage = lazy(() => import("./pages/OpenAIProviderPage").then((m) => ({ default: m.OpenAIProviderPage })));
 const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage").then((m) => ({ default: m.PlaceholderPage })));
@@ -24,6 +26,9 @@ export default function App() {
   const providerRoute = providerRouteFromPath(location.pathname);
   const channelRoute = channelRouteFromPath(location.pathname);
   const activeNav = navFromPath(location.pathname);
+
+  const { token, login } = useAuth();
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   const { requestConfirm, confirmDialogNode } = useConfirmDialog();
 
@@ -44,6 +49,12 @@ export default function App() {
     shellError = channelRoute === "telegram" ? telegramChannel.error : channelRoute === "qqbot" ? qqbotChannel.error : channelsData.error;
     shellLoading = channelRoute === "telegram" ? telegramChannel.loading : channelRoute === "qqbot" ? qqbotChannel.loading : channelsData.loading;
   }
+
+  useEffect(() => {
+    const handler = () => setRequiresAuth(true);
+    window.addEventListener("openclaw:unauthorized", handler);
+    return () => window.removeEventListener("openclaw:unauthorized", handler);
+  }, []);
 
   useEffect(() => {
     if (activeNav === "models") {
@@ -81,6 +92,17 @@ export default function App() {
     navigate("/models");
     setModelsExpanded(true);
   }, [activeNav, providerRoute, navigate, setModelsExpanded]);
+
+  if (requiresAuth && !token) {
+    return (
+      <Suspense fallback={null}>
+        <LoginPage onLogin={(t) => {
+          login(t);
+          window.location.reload();
+        }} />
+      </Suspense>
+    );
+  }
 
   return (
     <>

@@ -1,14 +1,13 @@
 package api
 
 import (
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestBasicAuthDisabled(t *testing.T) {
-	handler := basicAuth(RouterConfig{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestBearerAuthDisabled(t *testing.T) {
+	handler := bearerAuth(RouterConfig{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -21,10 +20,9 @@ func TestBasicAuthDisabled(t *testing.T) {
 	}
 }
 
-func TestBasicAuthChallengesUnauthorizedRequests(t *testing.T) {
-	handler := basicAuth(RouterConfig{
-		AuthUsername: "admin",
-		AuthPassword: "secret",
+func TestBearerAuthChallengesUnauthorizedRequests(t *testing.T) {
+	handler := bearerAuth(RouterConfig{
+		AuthToken: "secret-token",
 	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -36,21 +34,20 @@ func TestBasicAuthChallengesUnauthorizedRequests(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected %d, got %d", http.StatusUnauthorized, rec.Code)
 	}
-	if got := rec.Header().Get("WWW-Authenticate"); got != `Basic realm="OpenClaw Console"` {
-		t.Fatalf("expected basic auth challenge header, got %q", got)
+	if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer realm="OpenClaw Console"` {
+		t.Fatalf("expected bearer auth challenge header, got %q", got)
 	}
 }
 
-func TestBasicAuthAcceptsValidCredentials(t *testing.T) {
-	handler := basicAuth(RouterConfig{
-		AuthUsername: "admin",
-		AuthPassword: "secret",
+func TestBearerAuthAcceptsValidToken(t *testing.T) {
+	handler := bearerAuth(RouterConfig{
+		AuthToken: "secret-token",
 	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers", nil)
-	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:secret")))
+	req.Header.Set("Authorization", "Bearer secret-token")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -59,11 +56,10 @@ func TestBasicAuthAcceptsValidCredentials(t *testing.T) {
 	}
 }
 
-func TestBasicAuthSkipsHealthzAndOptions(t *testing.T) {
+func TestBearerAuthSkipsHealthzAndOptions(t *testing.T) {
 	t.Run("healthz", func(t *testing.T) {
 		router := NewRouter(NewAPI(nil, nil), RouterConfig{
-			AuthUsername: "admin",
-			AuthPassword: "secret",
+			AuthToken: "secret-token",
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -76,9 +72,8 @@ func TestBasicAuthSkipsHealthzAndOptions(t *testing.T) {
 	})
 
 	t.Run("options", func(t *testing.T) {
-		handler := basicAuth(RouterConfig{
-			AuthUsername: "admin",
-			AuthPassword: "secret",
+		handler := bearerAuth(RouterConfig{
+			AuthToken: "secret-token",
 		})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
@@ -89,6 +84,24 @@ func TestBasicAuthSkipsHealthzAndOptions(t *testing.T) {
 
 		if rec.Code != http.StatusNoContent {
 			t.Fatalf("expected %d, got %d", http.StatusNoContent, rec.Code)
+		}
+	})
+
+	t.Run("ui paths", func(t *testing.T) {
+		handler := bearerAuth(RouterConfig{
+			AuthToken: "secret-token",
+		})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		for _, path := range []string{"/", "/models", "/channels/telegram"} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("path %s: expected %d, got %d", path, http.StatusOK, rec.Code)
+			}
 		}
 	})
 }
