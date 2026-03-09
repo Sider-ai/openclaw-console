@@ -1,6 +1,7 @@
 package openclaw
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -73,7 +74,7 @@ type channelsCapabilities struct {
 }
 
 func (c *CLI) ModelsStatus(ctx context.Context) (modelsStatus, error) {
-	out, err := c.runJSON(ctx, "openclaw", "models", "status", "--json")
+	out, err := c.runJSON(ctx, "openclaw", "models", "status")
 	if err != nil {
 		return modelsStatus{}, err
 	}
@@ -85,7 +86,7 @@ func (c *CLI) ModelsStatus(ctx context.Context) (modelsStatus, error) {
 }
 
 func (c *CLI) ModelsList(ctx context.Context, provider string) (modelsList, error) {
-	args := []string{"models", "list", "--all", "--json"}
+	args := []string{"models", "list", "--all"}
 	if provider != "" {
 		args = append(args, "--provider", provider)
 	}
@@ -114,7 +115,7 @@ func (c *CLI) GatewayRestart(ctx context.Context) error {
 }
 
 func (c *CLI) PluginsList(ctx context.Context) (pluginsList, error) {
-	out, err := c.runJSON(ctx, "openclaw", "plugins", "list", "--json")
+	out, err := c.runJSON(ctx, "openclaw", "plugins", "list")
 	if err != nil {
 		return pluginsList{}, err
 	}
@@ -145,7 +146,7 @@ type pairingList struct {
 }
 
 func (c *CLI) PairingList(ctx context.Context, channel string) (pairingList, error) {
-	out, err := c.runJSON(ctx, "openclaw", "pairing", "list", channel, "--json")
+	out, err := c.runJSON(ctx, "openclaw", "pairing", "list", channel)
 	if err != nil {
 		return pairingList{}, err
 	}
@@ -167,7 +168,7 @@ func (c *CLI) PairingReject(ctx context.Context, channel, code string) error {
 }
 
 func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channelsCapabilities, error) {
-	args := []string{"channels", "capabilities", "--json"}
+	args := []string{"channels", "capabilities"}
 	if channel != "" {
 		args = append(args, "--channel", channel)
 	}
@@ -183,15 +184,16 @@ func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channels
 }
 
 func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, error) {
-	out, err := c.run(ctx, bin, args...)
-	if err != nil {
-		return nil, err
+	args = append(args, "--json")
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Env = c.commandEnv()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("%s %v failed: %w: %s", bin, args, err, stderr.String())
 	}
-	start := strings.Index(string(out), "{")
-	if start >= 0 {
-		return out[start:], nil
-	}
-	return out, nil
+	return stdout.Bytes(), nil
 }
 
 func (c *CLI) run(ctx context.Context, bin string, args ...string) ([]byte, error) {
