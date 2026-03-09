@@ -238,6 +238,76 @@ func (s *Store) DisconnectQQBotChannel(ctx context.Context) error {
 	return maybeRestartOpenClaw(ctx)
 }
 
+func (s *Store) GetWeComAppChannelConfig() (WeComAppChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return WeComAppChannelConfig{}, err
+	}
+	return readWeComAppChannelConfig(cfg), nil
+}
+
+func (s *Store) UpdateWeComAppChannel(
+	ctx context.Context,
+	update WeComAppChannelUpdate,
+) (WeComAppChannelConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return WeComAppChannelConfig{}, err
+	}
+
+	current := readWeComAppChannelConfig(cfg)
+	current.Enabled = update.Enabled
+	current.CorpID = update.CorpID
+	current.AgentID = update.AgentID
+	current.WebhookPath = update.WebhookPath
+	current.APIBaseURL = update.APIBaseURL
+	current.DMPolicy = update.DMPolicy
+	current.AllowFrom = append([]string(nil), update.AllowFrom...)
+	current.WelcomeText = update.WelcomeText
+	if update.CorpSecret != nil {
+		current.CorpSecret = *update.CorpSecret
+		if current.CorpSecret != "" {
+			current.CorpSecretFile = ""
+		}
+	}
+	if update.Token != nil {
+		current.Token = *update.Token
+	}
+	if update.EncodingAESKey != nil {
+		current.EncodingAESKey = *update.EncodingAESKey
+	}
+
+	setNestedMapValue(cfg, []string{"channels", "wecom-app"}, wecomAppChannelConfigMap(current))
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return WeComAppChannelConfig{}, err
+	}
+	return current, maybeRestartOpenClaw(ctx)
+}
+
+func (s *Store) DisconnectWeComAppChannel(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, err := s.readRawJSONMap(s.paths.ConfigPath)
+	if err != nil {
+		return err
+	}
+
+	channels := getNestedMap(cfg, []string{"channels"})
+	delete(channels, "wecom-app")
+	setNestedMapValue(cfg, []string{"channels"}, channels)
+	if err := s.writeJSONAtomic(s.paths.ConfigPath, cfg); err != nil {
+		return err
+	}
+	return maybeRestartOpenClaw(ctx)
+}
+
 func (s *Store) ResetAuth(ctx context.Context, provider string, restart bool, cli CLIRunner) (AuthResetResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -608,6 +678,74 @@ func qqbotChannelConfigMap(cfg QQBotChannelConfig) map[string]any {
 	}
 	if cfg.ImageServerBaseURL != "" {
 		out["imageServerBaseUrl"] = cfg.ImageServerBaseURL
+	}
+	return out
+}
+
+func readWeComAppChannelConfig(root map[string]any) WeComAppChannelConfig {
+	rawChannels, ok := root["channels"].(map[string]any)
+	if !ok {
+		return WeComAppChannelConfig{
+			DMPolicy:  "open",
+			AllowFrom: []string{"*"},
+		}
+	}
+	rawWecom, ok := rawChannels["wecom-app"].(map[string]any)
+	if !ok {
+		return WeComAppChannelConfig{
+			DMPolicy:  "open",
+			AllowFrom: []string{"*"},
+		}
+	}
+
+	return WeComAppChannelConfig{
+		Enabled:        readBool(rawWecom, "enabled"),
+		CorpID:         readString(rawWecom, "corpId"),
+		CorpSecret:     readString(rawWecom, "corpSecret"),
+		CorpSecretFile: readString(rawWecom, "corpSecretFile"),
+		AgentID:        readString(rawWecom, "agentId"),
+		Token:          readString(rawWecom, "token"),
+		EncodingAESKey: readString(rawWecom, "encodingAesKey"),
+		WebhookPath:    readString(rawWecom, "webhookPath"),
+		APIBaseURL:     readString(rawWecom, "apiBaseUrl"),
+		DMPolicy:       defaultString(readString(rawWecom, "dmPolicy"), "open"),
+		AllowFrom:      defaultStringList(readStringList(rawWecom, "allowFrom"), []string{"*"}),
+		WelcomeText:    readString(rawWecom, "welcomeText"),
+	}
+}
+
+func wecomAppChannelConfigMap(cfg WeComAppChannelConfig) map[string]any {
+	out := map[string]any{
+		"enabled":   cfg.Enabled,
+		"dmPolicy":  defaultString(cfg.DMPolicy, "open"),
+		"allowFrom": append([]string(nil), cfg.AllowFrom...),
+	}
+	if cfg.CorpID != "" {
+		out["corpId"] = cfg.CorpID
+	}
+	if cfg.CorpSecret != "" {
+		out["corpSecret"] = cfg.CorpSecret
+	}
+	if cfg.CorpSecretFile != "" {
+		out["corpSecretFile"] = cfg.CorpSecretFile
+	}
+	if cfg.AgentID != "" {
+		out["agentId"] = cfg.AgentID
+	}
+	if cfg.Token != "" {
+		out["token"] = cfg.Token
+	}
+	if cfg.EncodingAESKey != "" {
+		out["encodingAesKey"] = cfg.EncodingAESKey
+	}
+	if cfg.WebhookPath != "" {
+		out["webhookPath"] = cfg.WebhookPath
+	}
+	if cfg.APIBaseURL != "" {
+		out["apiBaseUrl"] = cfg.APIBaseURL
+	}
+	if cfg.WelcomeText != "" {
+		out["welcomeText"] = cfg.WelcomeText
 	}
 	return out
 }

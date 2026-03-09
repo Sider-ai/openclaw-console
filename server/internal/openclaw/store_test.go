@@ -130,6 +130,76 @@ func TestStore_QQBotChannel_CRUD(t *testing.T) {
 	}
 }
 
+func TestStore_WeComAppChannel_CRUD(t *testing.T) {
+	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
+	paths := newTestPaths(t)
+	store := NewStore(paths)
+	ctx := context.Background()
+
+	// Get returns defaults when no config exists
+	cfg, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Enabled {
+		t.Error("expected disabled by default")
+	}
+	if cfg.DMPolicy != "open" {
+		t.Errorf("default dmPolicy = %q", cfg.DMPolicy)
+	}
+	if len(cfg.AllowFrom) != 1 || cfg.AllowFrom[0] != "*" {
+		t.Errorf("default allowFrom = %v", cfg.AllowFrom)
+	}
+
+	// Update
+	secret := "corp-secret"
+	token := "msg-token"
+	aesKey := "aes-key-32chars"
+	updated, err := store.UpdateWeComAppChannel(ctx, WeComAppChannelUpdate{
+		Enabled:        true,
+		CorpID:         "corp123",
+		CorpSecret:     &secret,
+		AgentID:        "agent1",
+		Token:          &token,
+		EncodingAESKey: &aesKey,
+		DMPolicy:       "open",
+		AllowFrom:      []string{"*"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !updated.Enabled {
+		t.Error("expected enabled")
+	}
+	if updated.CorpID != "corp123" {
+		t.Errorf("corpID = %q", updated.CorpID)
+	}
+
+	// Verify persisted
+	cfg2, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg2.CorpID != "corp123" {
+		t.Errorf("persisted corpID = %q", cfg2.CorpID)
+	}
+	if cfg2.CorpSecret != secret {
+		t.Errorf("persisted corpSecret = %q", cfg2.CorpSecret)
+	}
+
+	// Disconnect
+	if err := store.DisconnectWeComAppChannel(ctx); err != nil {
+		t.Fatal(err)
+	}
+	cfg3, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg3.Enabled {
+		t.Error("expected disabled after disconnect")
+	}
+}
+
 func TestStore_UpsertProviderAPIKey(t *testing.T) {
 	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
@@ -366,5 +436,17 @@ func TestStore_EmptyState(t *testing.T) {
 	}
 	if len(qqCfg.AllowFrom) != 1 || qqCfg.AllowFrom[0] != "*" {
 		t.Errorf("default allowFrom = %v", qqCfg.AllowFrom)
+	}
+
+	// GetWeComAppChannelConfig on missing file returns defaults
+	wecomCfg, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wecomCfg.DMPolicy != "open" {
+		t.Errorf("default dmPolicy = %q", wecomCfg.DMPolicy)
+	}
+	if len(wecomCfg.AllowFrom) != 1 || wecomCfg.AllowFrom[0] != "*" {
+		t.Errorf("default allowFrom = %v", wecomCfg.AllowFrom)
 	}
 }

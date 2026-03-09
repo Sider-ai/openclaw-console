@@ -216,6 +216,60 @@ type QQBotChannelUpdate struct {
 	ImageServerBaseURL string
 }
 
+type WeComAppChannelResource struct {
+	Name                     string   `json:"name"`
+	ChannelID                string   `json:"channelId"`
+	DisplayName              string   `json:"displayName"`
+	PluginInstalled          bool     `json:"pluginInstalled"`
+	PluginVersion            string   `json:"pluginVersion,omitempty"`
+	PluginStatus             string   `json:"pluginStatus,omitempty"`
+	PluginSpec               string   `json:"pluginSpec"`
+	Enabled                  bool     `json:"enabled"`
+	Configured               bool     `json:"configured"`
+	CorpID                   string   `json:"corpId,omitempty"`
+	CorpIDConfigured         bool     `json:"corpIdConfigured"`
+	CorpSecretConfigured     bool     `json:"corpSecretConfigured"`
+	AgentID                  string   `json:"agentId,omitempty"`
+	AgentIDConfigured        bool     `json:"agentIdConfigured"`
+	TokenConfigured          bool     `json:"tokenConfigured"`
+	EncodingAESKeyConfigured bool     `json:"encodingAesKeyConfigured"`
+	WebhookPath              string   `json:"webhookPath,omitempty"`
+	APIBaseURL               string   `json:"apiBaseUrl,omitempty"`
+	DMPolicy                 string   `json:"dmPolicy"`
+	AllowFrom                []string `json:"allowFrom,omitempty"`
+	WelcomeText              string   `json:"welcomeText,omitempty"`
+	LastAppliedAction        string   `json:"lastAppliedAction,omitempty"`
+}
+
+type WeComAppChannelConfig struct {
+	Enabled        bool
+	CorpID         string
+	CorpSecret     string
+	CorpSecretFile string
+	AgentID        string
+	Token          string
+	EncodingAESKey string
+	WebhookPath    string
+	APIBaseURL     string
+	DMPolicy       string
+	AllowFrom      []string
+	WelcomeText    string
+}
+
+type WeComAppChannelUpdate struct {
+	Enabled        bool
+	CorpID         string
+	CorpSecret     *string
+	AgentID        string
+	Token          *string
+	EncodingAESKey *string
+	WebhookPath    string
+	APIBaseURL     string
+	DMPolicy       string
+	AllowFrom      []string
+	WelcomeText    string
+}
+
 func nowMillis() int64 {
 	return time.Now().UnixMilli()
 }

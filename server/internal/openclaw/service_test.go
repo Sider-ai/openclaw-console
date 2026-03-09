@@ -304,17 +304,19 @@ func TestService_ListChannels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(channels) != 2 {
-		t.Fatalf("expected 2 channels, got %d", len(channels))
+	if len(channels) != 3 {
+		t.Fatalf("expected 3 channels, got %d", len(channels))
 	}
 
-	var telegram, qqbot *ChannelSummaryResource
+	var telegram, qqbot, wecomApp *ChannelSummaryResource
 	for i := range channels {
 		switch channels[i].ChannelID {
 		case "telegram":
 			telegram = &channels[i]
 		case "qqbot":
 			qqbot = &channels[i]
+		case "wecom-app":
+			wecomApp = &channels[i]
 		}
 	}
 	if telegram == nil {
@@ -323,11 +325,17 @@ func TestService_ListChannels(t *testing.T) {
 	if qqbot == nil {
 		t.Fatal("qqbot channel not found")
 	}
+	if wecomApp == nil {
+		t.Fatal("wecom-app channel not found")
+	}
 	if !telegram.PluginInstalled {
 		t.Error("telegram plugin should be installed (builtin)")
 	}
 	if qqbot.PluginInstalled {
 		t.Error("qqbot plugin should not be installed")
+	}
+	if wecomApp.PluginInstalled {
+		t.Error("wecom-app plugin should not be installed")
 	}
 }
 

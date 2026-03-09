@@ -31,7 +31,7 @@ export function ChannelsPage({ channels, onOpenChannel }: ChannelsPageProps) {
       <Card className="shadow-sm ring-1 ring-border/60">
         <CardHeader>
           <CardTitle className="text-base">Channels</CardTitle>
-          <CardDescription>Channels let OpenClaw receive and send messages in external products. Configure Telegram directly, or install the QQ Bot community plugin and then finish the QQ configuration here.</CardDescription>
+          <CardDescription>Channels let OpenClaw receive and send messages in external products. Configure Telegram directly, or install the community plugins for QQ Bot or WeCom App and finish the configuration here.</CardDescription>
         </CardHeader>
       </Card>
 
@@ -51,7 +51,11 @@ export function ChannelsPage({ channels, onOpenChannel }: ChannelsPageProps) {
                   <CardDescription>
                     {channel.channelId === "telegram"
                       ? "Built-in Telegram channel using Telegram Bot API."
-                      : "Community QQ Bot plugin channel. Install the plugin first, then configure App ID and App Secret."}
+                      : channel.channelId === "qqbot"
+                        ? "Community QQ Bot plugin channel. Install the plugin first, then configure App ID and App Secret."
+                        : channel.channelId === "wecom-app"
+                            ? "Community WeCom App plugin channel. Install the plugin first, then configure Corp ID and credentials."
+                            : "Plugin channel. Install the plugin first, then configure."}
                   </CardDescription>
                 </div>
               </div>

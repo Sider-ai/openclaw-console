@@ -9,6 +9,7 @@ import { useConsoleData } from "./hooks/useConsoleData";
 import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
 import { useTelegramPairings } from "./hooks/useTelegramPairings";
+import { useWeComAppChannel } from "./hooks/useWeComAppChannel";
 import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
@@ -19,6 +20,7 @@ const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage").then((m) =>
 const ProviderPage = lazy(() => import("./pages/ProviderPage").then((m) => ({ default: m.ProviderPage })));
 const QQBotChannelPage = lazy(() => import("./pages/QQBotChannelPage").then((m) => ({ default: m.QQBotChannelPage })));
 const TelegramChannelPage = lazy(() => import("./pages/TelegramChannelPage").then((m) => ({ default: m.TelegramChannelPage })));
+const WeComAppChannelPage = lazy(() => import("./pages/WeComAppChannelPage").then((m) => ({ default: m.WeComAppChannelPage })));
 
 export default function App() {
   const location = useLocation();
@@ -40,14 +42,15 @@ export default function App() {
     (telegramChannel.channel?.dmPolicy === "pairing" || telegramChannel.form.dmPolicy === "pairing")
   );
   const qqbotChannel = useQQBotChannel(activeNav === "channels" && channelRoute === "qqbot", channelsData.refresh);
+  const wecomAppChannel = useWeComAppChannel(activeNav === "channels" && channelRoute === "wecom-app", channelsData.refresh);
   const { setModelsExpanded } = consoleData;
   const [channelsExpanded, setChannelsExpanded] = useState(activeNav === "channels");
 
   let shellError = consoleData.error;
   let shellLoading = consoleData.loading;
   if (activeNav === "channels") {
-    shellError = channelRoute === "telegram" ? telegramChannel.error : channelRoute === "qqbot" ? qqbotChannel.error : channelsData.error;
-    shellLoading = channelRoute === "telegram" ? telegramChannel.loading : channelRoute === "qqbot" ? qqbotChannel.loading : channelsData.loading;
+    shellError = channelRoute === "telegram" ? telegramChannel.error : channelRoute === "qqbot" ? qqbotChannel.error : channelRoute === "wecom-app" ? wecomAppChannel.error : channelsData.error;
+    shellLoading = channelRoute === "telegram" ? telegramChannel.loading : channelRoute === "qqbot" ? qqbotChannel.loading : channelRoute === "wecom-app" ? wecomAppChannel.loading : channelsData.loading;
   }
 
   useEffect(() => {
@@ -232,6 +235,23 @@ export default function App() {
                   onInstallPlugin={qqbotChannel.installPlugin}
                   onRefresh={qqbotChannel.refresh}
                   onSave={qqbotChannel.save}
+                />
+              }
+            />
+            <Route
+              path="/channels/wecom-app"
+              element={
+                <WeComAppChannelPage
+                  channel={wecomAppChannel.channel}
+                  form={wecomAppChannel.form}
+                  installResult={wecomAppChannel.installResult}
+                  isDirty={wecomAppChannel.isDirty}
+                  loading={wecomAppChannel.loading}
+                  onDisconnect={wecomAppChannel.disconnect}
+                  onFormChange={wecomAppChannel.setForm}
+                  onInstallPlugin={wecomAppChannel.installPlugin}
+                  onRefresh={wecomAppChannel.refresh}
+                  onSave={wecomAppChannel.save}
                 />
               }
             />

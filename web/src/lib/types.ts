@@ -128,6 +128,31 @@ export type QQBotChannel = {
   lastAppliedAction?: string;
 };
 
+export type WeComAppChannel = {
+  name: string;
+  channelId: string;
+  displayName: string;
+  pluginInstalled: boolean;
+  pluginVersion?: string;
+  pluginStatus?: string;
+  pluginSpec: string;
+  enabled: boolean;
+  configured: boolean;
+  corpId?: string;
+  corpIdConfigured: boolean;
+  corpSecretConfigured: boolean;
+  agentId?: string;
+  agentIdConfigured: boolean;
+  tokenConfigured: boolean;
+  encodingAesKeyConfigured: boolean;
+  webhookPath?: string;
+  apiBaseUrl?: string;
+  dmPolicy: string;
+  allowFrom?: string[];
+  welcomeText?: string;
+  lastAppliedAction?: string;
+};
+
 export type TelegramPairingEntry = {
   code: string;
   userId: string;

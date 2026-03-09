@@ -273,6 +273,66 @@ func (a *API) DisconnectQQBotChannel(
 	return &DisconnectQQBotChannelOutput{Body: res}, nil
 }
 
+// WeCom App channel
+
+func (a *API) GetWeComAppChannel(
+	ctx context.Context,
+	input *GetWeComAppChannelInput,
+) (*GetWeComAppChannelOutput, error) {
+	res, err := a.service.GetWeComAppChannel(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &GetWeComAppChannelOutput{Body: res}, nil
+}
+
+func (a *API) PatchWeComAppChannel(
+	ctx context.Context,
+	input *PatchWeComAppChannelInput,
+) (*PatchWeComAppChannelOutput, error) {
+	res, err := a.service.UpdateWeComAppChannel(ctx, openclaw.WeComAppChannelUpdate{
+		Enabled:        input.Body.Enabled,
+		CorpID:         input.Body.CorpID,
+		CorpSecret:     input.Body.CorpSecret,
+		AgentID:        input.Body.AgentID,
+		Token:          input.Body.Token,
+		EncodingAESKey: input.Body.EncodingAESKey,
+		WebhookPath:    input.Body.WebhookPath,
+		APIBaseURL:     input.Body.APIBaseURL,
+		DMPolicy:       input.Body.DMPolicy,
+		AllowFrom:      input.Body.AllowFrom,
+		WelcomeText:    input.Body.WelcomeText,
+	})
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &PatchWeComAppChannelOutput{Body: res}, nil
+}
+
+func (a *API) DisconnectWeComAppChannel(
+	ctx context.Context,
+	input *DisconnectWeComAppChannelInput,
+) (*DisconnectWeComAppChannelOutput, error) {
+	res, err := a.service.DisconnectWeComAppChannel(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &DisconnectWeComAppChannelOutput{Body: res}, nil
+}
+
+func (a *API) InstallWeComAppPlugin(
+	ctx context.Context,
+	input *InstallWeComAppPluginInput,
+) (*InstallWeComAppPluginOutput, error) {
+	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	defer cancel()
+	res, err := a.service.InstallWeComAppPlugin(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &InstallWeComAppPluginOutput{Body: res}, nil
+}
+
 // Plugins
 
 func (a *API) ListPlugins(ctx context.Context, input *ListPluginsInput) (*ListPluginsOutput, error) {

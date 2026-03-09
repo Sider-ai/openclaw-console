@@ -398,6 +398,32 @@ func TestBuildQQBotChannelResource(t *testing.T) {
 	}
 }
 
+func TestBuildWeComAppChannelResource(t *testing.T) {
+	cfg := WeComAppChannelConfig{
+		Enabled:        true,
+		CorpID:         "corp123",
+		CorpSecret:     "secret",
+		AgentID:        "agent1",
+		Token:          "token",
+		EncodingAESKey: "aeskey",
+		AllowFrom:      []string{"*"},
+	}
+	plugin := PluginResource{ID: "wecom-app", Installed: true, Version: "1.0.0"}
+	res := buildWeComAppChannelResource(cfg, plugin, "saved")
+	if res.Name != "channels/wecom-app" {
+		t.Errorf("got name %q", res.Name)
+	}
+	if !res.PluginInstalled {
+		t.Error("expected plugin installed")
+	}
+	if !res.Configured {
+		t.Error("expected configured")
+	}
+	if res.LastAppliedAction != "saved" {
+		t.Errorf("got action %q", res.LastAppliedAction)
+	}
+}
+
 func TestPluginByID(t *testing.T) {
 	plugins := []PluginResource{
 		{ID: "telegram", Installed: true},

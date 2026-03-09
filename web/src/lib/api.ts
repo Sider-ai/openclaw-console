@@ -1,4 +1,4 @@
-export const API_BASE = (import.meta.env.VITE_ADMIN_API_BASE || "/api").replace(/\/$/, "");
+export const API_BASE = (import.meta.env.VITE_ADMIN_API_BASE || (import.meta.env.BASE_URL + "api").replace("//", "/")).replace(/\/$/, "");
 
 const TOKEN_KEY = "openclaw_auth_token";
 

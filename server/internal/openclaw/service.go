@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	qqBotPluginSpec   = "@sliverp/qqbot@1.5.2"
-	maxPageSize       = 200
-	httpClientTimeout = 10 * time.Second
+	qqBotPluginSpec    = "@sliverp/qqbot@1.5.2"
+	weComAppPluginSpec = "@openclaw-china/wecom-app"
+	maxPageSize        = 200
+	httpClientTimeout  = 10 * time.Second
 )
 
 type Service struct {
@@ -36,6 +37,7 @@ func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, e
 		return nil, err
 	}
 	qqbotPlugin := pluginByID(plugins, "qqbot")
+	wecomAppPlugin := pluginByID(plugins, "wecom-app")
 
 	telegramCfg, err := s.store.GetTelegramChannelConfig()
 	if err != nil {
@@ -45,6 +47,15 @@ func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, e
 	if err != nil {
 		return nil, err
 	}
+	wecomAppCfg, err := s.store.GetWeComAppChannelConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	wecomConfigured := wecomAppCfg.CorpID != "" &&
+		(wecomAppCfg.CorpSecret != "" || wecomAppCfg.CorpSecretFile != "") &&
+		wecomAppCfg.AgentID != "" && wecomAppCfg.Token != "" &&
+		wecomAppCfg.EncodingAESKey != ""
 
 	out := []ChannelSummaryResource{
 		{
@@ -63,6 +74,15 @@ func (s *Service) ListChannels(ctx context.Context) ([]ChannelSummaryResource, e
 			Enabled:         qqbotCfg.Enabled,
 			Configured:      qqbotCfg.AppID != "" && (qqbotCfg.ClientSecret != "" || qqbotCfg.ClientSecretFile != ""),
 			PluginInstalled: qqbotPlugin.Installed,
+			Installable:     true,
+		},
+		{
+			Name:            "channels/wecom-app",
+			ChannelID:       "wecom-app",
+			DisplayName:     "WeCom App",
+			Enabled:         wecomAppCfg.Enabled,
+			Configured:      wecomConfigured,
+			PluginInstalled: wecomAppPlugin.Installed,
 			Installable:     true,
 		},
 	}
@@ -132,6 +152,70 @@ func (s *Service) DisconnectQQBotChannel(ctx context.Context) (QQBotChannelResou
 		return QQBotChannelResource{}, err
 	}
 	return s.GetQQBotChannel(ctx)
+}
+
+func (s *Service) GetWeComAppChannel(ctx context.Context) (WeComAppChannelResource, error) {
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	plugin := pluginByID(plugins, "wecom-app")
+	cfg, err := s.store.GetWeComAppChannelConfig()
+	if err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	return buildWeComAppChannelResource(cfg, plugin, ""), nil
+}
+
+func (s *Service) InstallWeComAppPlugin(ctx context.Context) (PluginInstallResult, error) {
+	output, err := s.cli.InstallPlugin(ctx, weComAppPluginSpec)
+	if err != nil {
+		return PluginInstallResult{}, err
+	}
+	restarted, restartErr := restartOpenClaw(ctx)
+	if restartErr != nil {
+		return PluginInstallResult{}, restartErr
+	}
+	if err := s.refreshCacheSync(ctx, "plugin-install"); err != nil {
+		return PluginInstallResult{}, err
+	}
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return PluginInstallResult{}, err
+	}
+	plugin := pluginByID(plugins, "wecom-app")
+	return PluginInstallResult{
+		Name:      "plugins/wecom-app:install",
+		PluginID:  "wecom-app",
+		Spec:      weComAppPluginSpec,
+		Installed: plugin.Installed,
+		Restarted: restarted,
+		Output:    strings.TrimSpace(output),
+		Plugin:    plugin,
+	}, nil
+}
+
+func (s *Service) UpdateWeComAppChannel(
+	ctx context.Context,
+	update WeComAppChannelUpdate,
+) (WeComAppChannelResource, error) {
+	update.AllowFrom = normalizeStringList(update.AllowFrom)
+	cfg, err := s.store.UpdateWeComAppChannel(ctx, update)
+	if err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	plugins, err := s.listPlugins(ctx)
+	if err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	return buildWeComAppChannelResource(cfg, pluginByID(plugins, "wecom-app"), "saved"), nil
+}
+
+func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChannelResource, error) {
+	if err := s.store.DisconnectWeComAppChannel(ctx); err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	return s.GetWeComAppChannel(ctx)
 }
 
 func (s *Service) Warmup(ctx context.Context) error {
@@ -509,6 +593,42 @@ func buildQQBotChannelResource(cfg QQBotChannelConfig, plugin PluginResource, ac
 		MarkdownSupport:        cfg.MarkdownSupport,
 		ImageServerBaseURL:     cfg.ImageServerBaseURL,
 		LastAppliedAction:      action,
+	}
+}
+
+func buildWeComAppChannelResource(
+	cfg WeComAppChannelConfig,
+	plugin PluginResource,
+	action string,
+) WeComAppChannelResource {
+	configured := cfg.CorpID != "" &&
+		(cfg.CorpSecret != "" || cfg.CorpSecretFile != "") &&
+		cfg.AgentID != "" && cfg.Token != "" &&
+		cfg.EncodingAESKey != ""
+
+	return WeComAppChannelResource{
+		Name:                     "channels/wecom-app",
+		ChannelID:                "wecom-app",
+		DisplayName:              "WeCom App",
+		PluginInstalled:          plugin.Installed,
+		PluginVersion:            plugin.Version,
+		PluginStatus:             plugin.Status,
+		PluginSpec:               weComAppPluginSpec,
+		Enabled:                  cfg.Enabled,
+		Configured:               configured,
+		CorpID:                   cfg.CorpID,
+		CorpIDConfigured:         cfg.CorpID != "",
+		CorpSecretConfigured:     cfg.CorpSecret != "" || cfg.CorpSecretFile != "",
+		AgentID:                  cfg.AgentID,
+		AgentIDConfigured:        cfg.AgentID != "",
+		TokenConfigured:          cfg.Token != "",
+		EncodingAESKeyConfigured: cfg.EncodingAESKey != "",
+		WebhookPath:              cfg.WebhookPath,
+		APIBaseURL:               cfg.APIBaseURL,
+		DMPolicy:                 defaultString(cfg.DMPolicy, "open"),
+		AllowFrom:                append([]string(nil), cfg.AllowFrom...),
+		WelcomeText:              cfg.WelcomeText,
+		LastAppliedAction:        action,
 	}
 }
 

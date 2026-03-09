@@ -30,7 +30,7 @@ echo "[1/3] Building web static assets..."
 (
   cd "$WEB_DIR"
   npm ci
-  VITE_ADMIN_API_BASE= npm run build
+  VITE_BASE_PATH="${VITE_BASE_PATH:-/}" VITE_ADMIN_API_BASE= npm run build
 )
 
 echo "[2/3] Syncing web assets into server embed directory..."

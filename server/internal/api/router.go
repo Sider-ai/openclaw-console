@@ -75,9 +75,15 @@ func registerRoutes(a *API, api huma.API) {
 	huma.Patch(api, "/api/v1/channels/qqbot", a.PatchQQBotChannel)
 	huma.Post(api, "/api/v1/channels/qqbot:disconnect", a.DisconnectQQBotChannel)
 
+	// WeCom App channel
+	huma.Get(api, "/api/v1/channels/wecom-app", a.GetWeComAppChannel)
+	huma.Patch(api, "/api/v1/channels/wecom-app", a.PatchWeComAppChannel)
+	huma.Post(api, "/api/v1/channels/wecom-app:disconnect", a.DisconnectWeComAppChannel)
+
 	// Plugins
 	huma.Get(api, "/api/v1/plugins", a.ListPlugins)
 	huma.Post(api, "/api/v1/plugins/qqbot:install", a.InstallQQBotPlugin)
+	huma.Post(api, "/api/v1/plugins/wecom-app:install", a.InstallWeComAppPlugin)
 
 	// Model catalog
 	huma.Get(api, "/api/v1/modelCatalogEntries", a.ListModelCatalogEntries)

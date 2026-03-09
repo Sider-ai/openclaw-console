@@ -13,4 +13,4 @@ build:
 	./scripts/build-single-binary.sh
 
 build-linux-amd64:
-	GOOS=linux GOARCH=amd64 ./scripts/build-single-binary.sh
+	GOOS=linux GOARCH=amd64 VITE_BASE_PATH=/siderclaw-console/ ./scripts/build-single-binary.sh

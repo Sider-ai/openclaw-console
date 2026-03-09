@@ -190,6 +190,42 @@ type InstallQQBotPluginOutput struct {
 	Body openclaw.PluginInstallResult
 }
 
+// WeCom App channel
+
+type GetWeComAppChannelInput struct{}
+type GetWeComAppChannelOutput struct {
+	Body openclaw.WeComAppChannelResource
+}
+
+type PatchWeComAppChannelInput struct {
+	Body struct {
+		Enabled        bool     `json:"enabled"`
+		CorpID         string   `json:"corpId"                        minLength:"1"`
+		CorpSecret     *string  `json:"corpSecret,omitempty"`
+		AgentID        string   `json:"agentId"                       minLength:"1"`
+		Token          *string  `json:"token,omitempty"`
+		EncodingAESKey *string  `json:"encodingAesKey,omitempty"`
+		WebhookPath    string   `json:"webhookPath,omitempty"`
+		APIBaseURL     string   `json:"apiBaseUrl,omitempty"`
+		DMPolicy       string   `json:"dmPolicy"                      enum:"open,allowlist,disabled" minLength:"1"`
+		AllowFrom      []string `json:"allowFrom,omitempty"`
+		WelcomeText    string   `json:"welcomeText,omitempty"`
+	}
+}
+type PatchWeComAppChannelOutput struct {
+	Body openclaw.WeComAppChannelResource
+}
+
+type DisconnectWeComAppChannelInput struct{}
+type DisconnectWeComAppChannelOutput struct {
+	Body openclaw.WeComAppChannelResource
+}
+
+type InstallWeComAppPluginInput struct{}
+type InstallWeComAppPluginOutput struct {
+	Body openclaw.PluginInstallResult
+}
+
 // Model catalog
 
 type ListModelCatalogEntriesInput struct {
