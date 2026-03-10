@@ -73,15 +73,14 @@ type ModelCatalogEntryResource struct {
 }
 
 type CodexAuthSessionResource struct {
-	Name             string `json:"name"`
-	SessionID        string `json:"sessionId"`
-	State            string `json:"state"`
-	AuthURL          string `json:"authUrl,omitempty"`
-	ExpiresAt        int64  `json:"expiresAt"`
-	CreatedAt        int64  `json:"createdAt"`
-	DefaultModelHint string `json:"defaultModelHint,omitempty"`
-	ErrorCode        string `json:"errorCode,omitempty"`
-	ErrorMessage     string `json:"errorMessage,omitempty"`
+	Name         string `json:"name"`
+	SessionID    string `json:"sessionId"`
+	State        string `json:"state"`
+	AuthURL      string `json:"authUrl,omitempty"`
+	ExpiresAt    int64  `json:"expiresAt"`
+	CreatedAt    int64  `json:"createdAt"`
+	ErrorCode    string `json:"errorCode,omitempty"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
 type AuthResetResult struct {

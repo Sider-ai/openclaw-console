@@ -396,7 +396,7 @@ func (a *API) CreateCodexAuthSession(
 ) (*CreateCodexAuthSessionOutput, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	res, err := a.sessions.Create(ctx, input.Body.DefaultModelHint)
+	res, err := a.sessions.Create(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError(err.Error())
 	}

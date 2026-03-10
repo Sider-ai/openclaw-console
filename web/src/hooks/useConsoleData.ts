@@ -260,8 +260,7 @@ export function useConsoleData(providerRoute: string | null, options?: { request
     setError("");
     try {
       const session = await api<CodexSession>("/v1/codexAuthSessions", {
-        method: "POST",
-        body: JSON.stringify({ defaultModelHint: "openai-codex/gpt-5.3-codex" })
+        method: "POST"
       });
       setCodexSession(session);
     } catch (e) {

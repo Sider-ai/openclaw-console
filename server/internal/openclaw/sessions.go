@@ -37,14 +37,13 @@ const (
 var openAIAuthURLPattern = regexp.MustCompile(`https://auth\.openai\.com/oauth/authorize\S+`)
 
 type codexSession struct {
-	id               string
-	state            string
-	authURL          string
-	errorCode        string
-	errorMessage     string
-	createdAt        time.Time
-	expiresAt        time.Time
-	defaultModelHint string
+	id           string
+	state        string
+	authURL      string
+	errorCode    string
+	errorMessage string
+	createdAt    time.Time
+	expiresAt    time.Time
 
 	tmpPaths Paths
 	cmd      *exec.Cmd
@@ -74,7 +73,7 @@ func NewSessionManager(cli *CLI, store *Store, restarter Restarter) *SessionMana
 }
 
 //nolint:revive // ctx intentionally unused; PTY process outlives the request
-func (m *SessionManager) Create(ctx context.Context, defaultModel string) (CodexAuthSessionResource, error) {
+func (m *SessionManager) Create(ctx context.Context) (CodexAuthSessionResource, error) {
 	id, err := randomID(sessionIDLength)
 	if err != nil {
 		return CodexAuthSessionResource{}, err
@@ -117,17 +116,16 @@ func (m *SessionManager) Create(ctx context.Context, defaultModel string) (Codex
 	}
 
 	s := &codexSession{
-		id:               id,
-		state:            sessionStateLaunching,
-		createdAt:        time.Now(),
-		expiresAt:        time.Now().Add(sessionExpiry),
-		defaultModelHint: defaultModel,
-		tmpPaths:         paths,
-		cmd:              cmd,
-		ptmx:             ptmx,
-		cancel:           cancel,
-		done:             make(chan error, 1),
-		outputTail:       make([]string, 0, outputTailMaxSize),
+		id:         id,
+		state:      sessionStateLaunching,
+		createdAt:  time.Now(),
+		expiresAt:  time.Now().Add(sessionExpiry),
+		tmpPaths:   paths,
+		cmd:        cmd,
+		ptmx:       ptmx,
+		cancel:     cancel,
+		done:       make(chan error, 1),
+		outputTail: make([]string, 0, outputTailMaxSize),
 	}
 
 	m.mu.Lock()
@@ -322,16 +320,6 @@ func (m *SessionManager) mergeFromTemp(s *codexSession) error {
 		m.mu.Unlock()
 		return err
 	}
-	if s.defaultModelHint != "" {
-		if err := m.cli.SetDefaultModel(ctx, s.defaultModelHint); err != nil {
-			m.mu.Lock()
-			s.state = sessionStateFailed
-			s.errorCode = "MERGE_CREDENTIALS_FAILED"
-			s.errorMessage = err.Error()
-			m.mu.Unlock()
-			return err
-		}
-	}
 	if err := m.restarter.Restart(ctx); err != nil {
 		m.mu.Lock()
 		s.state = sessionStateFailed
@@ -364,15 +352,14 @@ func (m *SessionManager) tempHasCodexProfile(s *codexSession) (bool, error) {
 
 func (m *SessionManager) toResource(s *codexSession) CodexAuthSessionResource {
 	return CodexAuthSessionResource{
-		Name:             "codexAuthSessions/" + s.id,
-		SessionID:        s.id,
-		State:            s.state,
-		AuthURL:          s.authURL,
-		ExpiresAt:        s.expiresAt.UnixMilli(),
-		CreatedAt:        s.createdAt.UnixMilli(),
-		DefaultModelHint: s.defaultModelHint,
-		ErrorCode:        s.errorCode,
-		ErrorMessage:     s.errorMessage,
+		Name:         "codexAuthSessions/" + s.id,
+		SessionID:    s.id,
+		State:        s.state,
+		AuthURL:      s.authURL,
+		ExpiresAt:    s.expiresAt.UnixMilli(),
+		CreatedAt:    s.createdAt.UnixMilli(),
+		ErrorCode:    s.errorCode,
+		ErrorMessage: s.errorMessage,
 	}
 }
 

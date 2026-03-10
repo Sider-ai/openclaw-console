@@ -247,11 +247,7 @@ type ListModelCatalogEntriesOutput struct {
 
 // Codex auth sessions
 
-type CreateCodexAuthSessionInput struct {
-	Body struct {
-		DefaultModelHint string `json:"defaultModelHint,omitempty"`
-	}
-}
+type CreateCodexAuthSessionInput struct{}
 type CreateCodexAuthSessionOutput struct {
 	Body openclaw.CodexAuthSessionResource
 }
