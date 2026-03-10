@@ -7,18 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 )
 
-type CLI struct {
-	paths Paths
-}
+type CLI struct{}
 
-func NewCLI(paths Paths) *CLI {
-	return &CLI{paths: paths}
+func NewCLI() *CLI {
+	return &CLI{}
 }
 
 type modelsStatus struct {
@@ -186,7 +182,6 @@ func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channels
 func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, error) {
 	args = append(args, "--json")
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Env = c.commandEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -198,33 +193,11 @@ func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, 
 
 func (c *CLI) run(ctx context.Context, bin string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Env = c.commandEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("%s %v failed: %w: %s", bin, args, err, string(out))
 	}
 	return out, nil
-}
-
-func (c *CLI) commandEnv() []string {
-	env := os.Environ()
-	hasHome := false
-	hasConfig := false
-	for _, kv := range env {
-		if strings.HasPrefix(kv, "OPENCLAW_HOME=") {
-			hasHome = true
-		}
-		if strings.HasPrefix(kv, "OPENCLAW_CONFIG_PATH=") {
-			hasConfig = true
-		}
-	}
-	if !hasHome {
-		env = append(env, "OPENCLAW_HOME="+c.paths.Home)
-	}
-	if !hasConfig {
-		env = append(env, "OPENCLAW_CONFIG_PATH="+c.paths.ConfigPath)
-	}
-	return env
 }
 
 func EncodePageToken(offset int) string {

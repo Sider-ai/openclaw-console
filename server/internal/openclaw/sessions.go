@@ -84,7 +84,7 @@ func (m *SessionManager) Create(ctx context.Context, defaultModel string) (Codex
 	if err := os.MkdirAll(tmpHome, 0o700); err != nil {
 		return CodexAuthSessionResource{}, fmt.Errorf("create session temp dir: %w", err)
 	}
-	paths := m.cli.paths.WithHome(tmpHome)
+	paths := m.store.paths.WithHome(tmpHome)
 
 	sCtx, cancel := context.WithCancel(context.Background())
 	args := []string{

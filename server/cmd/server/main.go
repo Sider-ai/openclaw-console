@@ -24,7 +24,7 @@ func main() {
 	}
 
 	store := openclaw.NewStore(paths)
-	cli := openclaw.NewCLI(paths)
+	cli := openclaw.NewCLI()
 	restarter := openclaw.NewSystemRestarter()
 	service := openclaw.NewService(cli, store, restarter)
 	warmupCtx, warmupCancel := context.WithTimeout(context.Background(), 45*time.Second)
