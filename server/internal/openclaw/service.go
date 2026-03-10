@@ -258,6 +258,10 @@ func (s *Service) GetModelSetting(ctx context.Context) (ModelSettingResource, er
 	return snapshot.modelSetting, nil
 }
 
+func (s *Service) GetBuildInfo() BuildInfoResource {
+	return ReadBuildInfoResource()
+}
+
 func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (ModelSettingResource, error) {
 	if defaultModel == "" {
 		return ModelSettingResource{}, &InputError{Message: "defaultModel is required"}

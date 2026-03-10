@@ -10,7 +10,9 @@ import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
 import { useTelegramPairings } from "./hooks/useTelegramPairings";
 import { useWeComAppChannel } from "./hooks/useWeComAppChannel";
+import { api } from "./lib/api";
 import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
+import type { BuildInfo } from "./lib/types";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
@@ -31,6 +33,7 @@ export default function App() {
 
   const { token, login } = useAuth();
   const [requiresAuth, setRequiresAuth] = useState(false);
+  const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
   const { requestConfirm, confirmDialogNode } = useConfirmDialog();
 
@@ -57,6 +60,26 @@ export default function App() {
     const handler = () => setRequiresAuth(true);
     window.addEventListener("openclaw:unauthorized", handler);
     return () => window.removeEventListener("openclaw:unauthorized", handler);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void api<BuildInfo>("/v1/version")
+      .then((data) => {
+        if (!cancelled) {
+          setBuildInfo(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBuildInfo(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -112,6 +135,7 @@ export default function App() {
       <AppShell
         activeNav={activeNav}
         apiBase={consoleData.apiBase}
+        buildInfo={buildInfo}
         channelNav={channelsData.channelNav}
         channelRoute={channelRoute}
         channelsExpanded={channelsExpanded}

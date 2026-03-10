@@ -43,6 +43,8 @@ func NewRouter(a *API, cfg RouterConfig) http.Handler {
 }
 
 func registerRoutes(a *API, api huma.API) {
+	huma.Get(api, "/api/v1/version", a.GetVersion)
+
 	// Model settings
 	huma.Get(api, "/api/v1/modelSettings/default", a.GetDefaultModelSetting)
 	huma.Patch(api, "/api/v1/modelSettings/default", a.PatchDefaultModelSetting)

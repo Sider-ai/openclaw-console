@@ -36,6 +36,19 @@ go run ./cmd/server
 
 The single-binary release build uses `go build -trimpath -ldflags="-s -w"` to reduce binary size.
 
+## Version Tags
+
+`server/cmd/server` is built from the `github.com/Sider-ai/sider-openclaw-console/server` module.
+
+If you want Go build info to resolve to a release version instead of a pseudo-version, tag the module with the `server/` prefix:
+
+```bash
+git tag server/v0.2.0
+git push origin server/v0.2.0
+```
+
+A repo-root tag like `v0.2.0` is not enough for this submodule. Use `server/vX.Y.Z`.
+
 ## Environment
 
 - `OPENCLAW_HOME` (optional)

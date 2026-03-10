@@ -3,6 +3,12 @@ export type ModelSetting = {
   defaultModel: string;
 };
 
+export type BuildInfo = {
+  revision?: string;
+  time?: string;
+  modified: boolean;
+};
+
 export type Provider = {
   name: string;
   providerId: string;

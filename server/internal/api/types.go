@@ -4,6 +4,11 @@ import "github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
 
 // Model settings
 
+type GetVersionInput struct{}
+type GetVersionOutput struct {
+	Body openclaw.BuildInfoResource
+}
+
 type GetDefaultModelSettingInput struct{}
 type GetDefaultModelSettingOutput struct {
 	Body openclaw.ModelSettingResource

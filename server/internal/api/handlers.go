@@ -37,6 +37,10 @@ func mapServiceError(err error) error {
 
 // Model settings
 
+func (a *API) GetVersion(ctx context.Context, input *GetVersionInput) (*GetVersionOutput, error) {
+	return &GetVersionOutput{Body: a.service.GetBuildInfo()}, nil
+}
+
 func (a *API) GetDefaultModelSetting(
 	ctx context.Context,
 	input *GetDefaultModelSettingInput,

@@ -26,6 +26,12 @@ type ModelSettingResource struct {
 	DefaultModel string `json:"defaultModel"`
 }
 
+type BuildInfoResource struct {
+	Revision string `json:"revision,omitempty"`
+	Time     string `json:"time,omitempty"`
+	Modified bool   `json:"modified"`
+}
+
 type ProviderResource struct {
 	Name           string   `json:"name"`
 	ProviderID     string   `json:"providerId"`

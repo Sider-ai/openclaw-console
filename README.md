@@ -35,6 +35,19 @@ make build
 make build-linux-amd64 # for linux amd64
 ```
 
+## Versioning
+
+The Go binary is built from the `server/` module, so release tags must target that module path.
+
+Use:
+
+```bash
+git tag server/v0.2.0
+git push origin server/v0.2.0
+```
+
+Do not use a repo-root tag like `v0.2.0` if you expect Go build info for `server/cmd/server` to resolve to the tagged version. For this submodule, Go recognizes tags in the `server/vX.Y.Z` form.
+
 ## Run
 
 ```bash

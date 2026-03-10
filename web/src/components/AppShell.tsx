@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { AlertCircle, Bot, ChevronRight, Cpu, Loader2, MessageSquare, Wrench } from "lucide-react";
 
 import { ROOT_NAV_ITEMS } from "../lib/navigation";
-import type { ChannelNav, ModelProviderNav, NavKey } from "../lib/types";
+import type { BuildInfo, ChannelNav, ModelProviderNav, NavKey } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -34,6 +35,7 @@ const ROOT_NAV_ICONS: Record<string, LucideIcon> = {
 type AppShellProps = PropsWithChildren<{
   activeNav: NavKey;
   apiBase: string;
+  buildInfo: BuildInfo | null;
   channelNav: ChannelNav[];
   channelRoute: string | null;
   channelsExpanded: boolean;
@@ -50,6 +52,7 @@ type AppShellProps = PropsWithChildren<{
 export function AppShell({
   activeNav,
   apiBase,
+  buildInfo,
   channelNav,
   channelRoute,
   channelsExpanded,
@@ -63,6 +66,10 @@ export function AppShell({
   providerNav,
   providerRoute
 }: AppShellProps) {
+  const versionLabel = buildInfo?.revision
+    ? `Build ${buildInfo.revision.slice(0, 7)}`
+    : "Build unknown";
+
   return (
     <SidebarProvider>
       <Sidebar variant="inset">
@@ -179,6 +186,22 @@ export function AppShell({
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
+        <SidebarFooter>
+          <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/30 px-3 py-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45">
+              Build
+            </div>
+            <div className="mt-1 text-sm font-semibold text-sidebar-foreground">
+              {versionLabel}
+            </div>
+            {buildInfo?.time && (
+              <div className="mt-1 text-[11px] text-sidebar-foreground/60">
+                {buildInfo.time}
+                {buildInfo.modified ? " • modified" : ""}
+              </div>
+            )}
+          </div>
+        </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
