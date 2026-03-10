@@ -253,6 +253,9 @@ func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (
 	if err := s.cli.SetDefaultModel(ctx, defaultModel); err != nil {
 		return ModelSettingResource{}, err
 	}
+	if _, err := restartOpenClaw(ctx); err != nil {
+		return ModelSettingResource{}, fmt.Errorf("restart after model change: %w", err)
+	}
 	if err := s.refreshCacheSync(ctx, "set-default-model"); err != nil {
 		return ModelSettingResource{}, err
 	}
