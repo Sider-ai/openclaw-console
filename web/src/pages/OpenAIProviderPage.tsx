@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import { useState } from "react";
 import { providerDocsURL } from "../lib/navigation";
 import type { CodexSession, Provider } from "../lib/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -43,6 +44,19 @@ export function OpenAIProviderPage({
   openaiProvider,
   redirectURL
 }: OpenAIProviderPageProps) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+
+  async function handleCopyAuthURL(authURL: string) {
+    try {
+      await navigator.clipboard.writeText(authURL);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 2000);
+    } catch {
+      setCopyState("failed");
+      window.setTimeout(() => setCopyState("idle"), 2000);
+    }
+  }
+
   return (
     <>
       <Card className="shadow-sm ring-1 ring-border/60">
@@ -132,12 +146,23 @@ export function OpenAIProviderPage({
                     <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
                       Please open the link below to log in with OpenAI. If the browser did not open automatically, click the button.
                     </p>
-                    <a href={codexSession.authUrl} target="_blank" rel="noreferrer">
-                      <Button type="button" variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 gap-1.5">
-                        <ExternalLink className="h-4 w-4" />
-                        Open OpenAI Login URL
+                    <div className="flex flex-wrap gap-2">
+                      <a href={codexSession.authUrl} target="_blank" rel="noreferrer">
+                        <Button type="button" variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 gap-1.5">
+                          <ExternalLink className="h-4 w-4" />
+                          Open OpenAI Login URL
+                        </Button>
+                      </a>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 gap-1.5"
+                        onClick={() => void handleCopyAuthURL(codexSession.authUrl)}
+                      >
+                        {copyState === "copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy Failed" : "Copy Link"}
                       </Button>
-                    </a>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
