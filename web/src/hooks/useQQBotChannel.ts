@@ -72,6 +72,7 @@ export function useQQBotChannel(enabled: boolean, onChanged?: () => Promise<void
     return (
       channel.enabled !== form.enabled ||
       (channel.appId || "") !== form.appId.trim() ||
+      form.clientSecret.trim() !== "" ||
       normalizeAllowFrom(channel.allowFrom || ["*"]).join(",") !== normalizeAllowFrom(form.allowFrom).join(",") ||
       channel.markdownSupport !== form.markdownSupport ||
       (channel.imageServerBaseUrl || "") !== form.imageServerBaseUrl.trim()
