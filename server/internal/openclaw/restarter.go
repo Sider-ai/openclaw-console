@@ -17,22 +17,7 @@ func NewSystemRestarter() SystemRestarter {
 }
 
 func (SystemRestarter) Restart(ctx context.Context) error {
-	if _, err := exec.LookPath("systemctl"); err != nil {
-		return restartOpenClawGateway(ctx)
-	}
-	cmd := exec.CommandContext(ctx, "systemctl", "restart", "openclaw")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("restart openclaw service: %w", err)
-	}
-	return nil
-}
-
-func restartOpenClawGateway(ctx context.Context) error {
-	if _, err := exec.LookPath("openclaw"); err != nil {
-		return err
-	}
-	cmd := exec.CommandContext(ctx, "openclaw", "gateway", "restart")
-	if err := cmd.Run(); err != nil {
+	if err := exec.CommandContext(ctx, "openclaw", "gateway", "restart").Run(); err != nil {
 		return fmt.Errorf("restart openclaw gateway: %w", err)
 	}
 	return nil
