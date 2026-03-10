@@ -55,7 +55,6 @@ Configurable environment variables:
 | `OPENCLAW_CONSOLE_ADDR` | `:18080` | Sets the console listen address. |
 | `OPENCLAW_CONSOLE_AUTH_USER` | empty | Enables HTTP Basic Auth only when set together with `OPENCLAW_CONSOLE_AUTH_PASSWORD`. |
 | `OPENCLAW_CONSOLE_AUTH_PASSWORD` | empty | Enables HTTP Basic Auth only when set together with `OPENCLAW_CONSOLE_AUTH_USER`. |
-| `OPENCLAW_ADMIN_SKIP_RESTART` | empty | Set to `1` to skip `systemctl restart openclaw` after config changes. |
 
 ## Validation
 

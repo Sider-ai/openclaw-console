@@ -21,6 +21,19 @@ type mockCLI struct {
 	gatewayRestartFn  func(ctx context.Context) error
 }
 
+type mockRestarter struct {
+	restartFn func(ctx context.Context) error
+	calls     int
+}
+
+func (m *mockRestarter) Restart(ctx context.Context) error {
+	m.calls++
+	if m.restartFn != nil {
+		return m.restartFn(ctx)
+	}
+	return nil
+}
+
 func (m *mockCLI) ModelsStatus(ctx context.Context) (modelsStatus, error) {
 	if m.modelsStatusFn != nil {
 		return m.modelsStatusFn(ctx)
@@ -216,11 +229,14 @@ func newTestPaths(t *testing.T) Paths {
 
 // newTestService creates a Service with a mock CLI and real Store backed by TempDir.
 func newTestService(t *testing.T, cli CLIRunner) *Service {
+	return newTestServiceWithRestarter(t, cli, &mockRestarter{})
+}
+
+func newTestServiceWithRestarter(t *testing.T, cli CLIRunner, restarter Restarter) *Service {
 	t.Helper()
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	svc := NewService(cli, store)
+	svc := NewService(cli, store, restarter)
 	if err := svc.Warmup(context.Background()); err != nil {
 		t.Fatal(err)
 	}

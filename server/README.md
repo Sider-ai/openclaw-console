@@ -43,7 +43,6 @@ The single-binary release build uses `go build -trimpath -ldflags="-s -w"` to re
 - `OPENCLAW_CONSOLE_ADDR` (optional, default `:18080`)
 - `OPENCLAW_CONSOLE_AUTH_USER` (optional, must be set with `OPENCLAW_CONSOLE_AUTH_PASSWORD` to enable HTTP Basic Auth)
 - `OPENCLAW_CONSOLE_AUTH_PASSWORD` (optional, must be set with `OPENCLAW_CONSOLE_AUTH_USER` to enable HTTP Basic Auth)
-- `OPENCLAW_ADMIN_SKIP_RESTART=1` (optional, skip `systemctl restart openclaw`)
 
 ## Resources and Endpoints
 

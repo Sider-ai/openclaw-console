@@ -62,7 +62,8 @@ func TestService_GetProvider_NotFound(t *testing.T) {
 }
 
 func TestService_ConnectProviderAPIKey(t *testing.T) {
-	svc := newTestService(t, newStandardMockCLI())
+	restarter := &mockRestarter{}
+	svc := newTestServiceWithRestarter(t, newStandardMockCLI(), restarter)
 	ctx := context.Background()
 
 	p, err := svc.ConnectProviderAPIKey(ctx, "anthropic", "sk-test-key")
@@ -71,6 +72,9 @@ func TestService_ConnectProviderAPIKey(t *testing.T) {
 	}
 	if p.ProviderID != "anthropic" {
 		t.Errorf("providerId = %q", p.ProviderID)
+	}
+	if restarter.calls != 1 {
+		t.Errorf("restart calls = %d, want 1", restarter.calls)
 	}
 }
 
@@ -123,6 +127,7 @@ func TestService_DisconnectProvider_UnsupportedProvider(t *testing.T) {
 
 func TestService_UpdateDefaultModel(t *testing.T) {
 	called := false
+	restarter := &mockRestarter{}
 	cli := newStandardMockCLI()
 	cli.setDefaultModelFn = func(_ context.Context, model string) error {
 		called = true
@@ -132,7 +137,7 @@ func TestService_UpdateDefaultModel(t *testing.T) {
 		return nil
 	}
 
-	svc := newTestService(t, cli)
+	svc := newTestServiceWithRestarter(t, cli, restarter)
 	ctx := context.Background()
 
 	_, err := svc.UpdateDefaultModel(ctx, "anthropic/claude-sonnet-4-6")
@@ -141,6 +146,9 @@ func TestService_UpdateDefaultModel(t *testing.T) {
 	}
 	if !called {
 		t.Error("SetDefaultModel not called")
+	}
+	if restarter.calls != 1 {
+		t.Errorf("restart calls = %d, want 1", restarter.calls)
 	}
 }
 
@@ -217,7 +225,8 @@ func TestService_ListModelCatalogEntries_Pagination(t *testing.T) {
 }
 
 func TestService_UpdateTelegramChannel(t *testing.T) {
-	svc := newTestService(t, newStandardMockCLI())
+	restarter := &mockRestarter{}
+	svc := newTestServiceWithRestarter(t, newStandardMockCLI(), restarter)
 	ctx := context.Background()
 
 	token := "bot:token123"
@@ -239,6 +248,31 @@ func TestService_UpdateTelegramChannel(t *testing.T) {
 	}
 	if len(res.AllowFrom) != 2 {
 		t.Errorf("allowFrom = %v", res.AllowFrom)
+	}
+	if restarter.calls != 1 {
+		t.Errorf("restart calls = %d, want 1", restarter.calls)
+	}
+}
+
+func TestService_UpdateTelegramChannel_RestartFails(t *testing.T) {
+	restarter := &mockRestarter{
+		restartFn: func(context.Context) error {
+			return errors.New("restart failed")
+		},
+	}
+	svc := newTestServiceWithRestarter(t, newStandardMockCLI(), restarter)
+	ctx := context.Background()
+
+	token := "bot:token123"
+	_, err := svc.UpdateTelegramChannel(ctx, TelegramChannelUpdate{
+		Enabled:     true,
+		BotToken:    &token,
+		DMPolicy:    "allowlist",
+		AllowFrom:   []string{"123"},
+		GroupPolicy: "allowlist",
+	})
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 
@@ -373,7 +407,8 @@ func TestService_ListAuthProfiles_UnsupportedProvider(t *testing.T) {
 
 func TestService_ResetAuth(t *testing.T) {
 	cli := newStandardMockCLI()
-	svc := newTestService(t, cli)
+	restarter := &mockRestarter{}
+	svc := newTestServiceWithRestarter(t, cli, restarter)
 	ctx := context.Background()
 
 	// Setup auth data
@@ -397,6 +432,44 @@ func TestService_ResetAuth(t *testing.T) {
 	}
 	if len(result.AuthProfilesRemoved) != 1 {
 		t.Errorf("auth profiles removed = %v", result.AuthProfilesRemoved)
+	}
+	if restarter.calls != 0 {
+		t.Errorf("restart calls = %d, want 0", restarter.calls)
+	}
+}
+
+func TestService_ResetAuth_RestartRequested(t *testing.T) {
+	restarter := &mockRestarter{
+		restartFn: func(context.Context) error {
+			return nil
+		},
+	}
+	svc := newTestServiceWithRestarter(t, newStandardMockCLI(), restarter)
+	ctx := context.Background()
+
+	writeTestJSON(t, svc.store.paths.AuthStorePath, AuthStore{
+		Version: 1,
+		Profiles: map[string]AuthCredential{
+			"openai:default": {Type: "api_key", Provider: "openai", Key: "sk-1"},
+		},
+	})
+	writeTestJSON(t, svc.store.paths.ConfigPath, map[string]any{
+		"auth": map[string]any{
+			"profiles": map[string]any{
+				"openai:default": map[string]any{"provider": "openai", "mode": "api_key"},
+			},
+		},
+	})
+
+	result, err := svc.ResetAuth(ctx, "openai", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Restarted {
+		t.Error("expected restarted")
+	}
+	if restarter.calls != 1 {
+		t.Errorf("restart calls = %d, want 1", restarter.calls)
 	}
 }
 

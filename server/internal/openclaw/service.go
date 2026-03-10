@@ -18,16 +18,18 @@ const (
 )
 
 type Service struct {
-	cli   CLIRunner
-	store *Store
-	cache *serviceCache
+	cli       CLIRunner
+	store     *Store
+	restarter Restarter
+	cache     *serviceCache
 }
 
-func NewService(cli CLIRunner, store *Store) *Service {
+func NewService(cli CLIRunner, store *Store, restarter Restarter) *Service {
 	return &Service{
-		cli:   cli,
-		store: store,
-		cache: newServiceCache(cli, store.paths),
+		cli:       cli,
+		store:     store,
+		restarter: restarter,
+		cache:     newServiceCache(cli, store.paths),
 	}
 }
 
@@ -111,9 +113,8 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 	if err != nil {
 		return PluginInstallResult{}, err
 	}
-	restarted, restartErr := restartOpenClaw(ctx)
-	if restartErr != nil {
-		return PluginInstallResult{}, restartErr
+	if err := s.restarter.Restart(ctx); err != nil {
+		return PluginInstallResult{}, err
 	}
 	if err := s.refreshCacheSync(ctx, "plugin-install"); err != nil {
 		return PluginInstallResult{}, err
@@ -128,7 +129,7 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 		PluginID:  "qqbot",
 		Spec:      qqBotPluginSpec,
 		Installed: plugin.Installed,
-		Restarted: restarted,
+		Restarted: true,
 		Output:    strings.TrimSpace(output),
 		Plugin:    plugin,
 	}, nil
@@ -136,8 +137,11 @@ func (s *Service) InstallQQBotPlugin(ctx context.Context) (PluginInstallResult, 
 
 func (s *Service) UpdateQQBotChannel(ctx context.Context, update QQBotChannelUpdate) (QQBotChannelResource, error) {
 	update.AllowFrom = normalizeStringList(update.AllowFrom)
-	cfg, err := s.store.UpdateQQBotChannel(ctx, update)
+	cfg, err := s.store.UpdateQQBotChannel(update)
 	if err != nil {
+		return QQBotChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return QQBotChannelResource{}, err
 	}
 	plugins, err := s.listPlugins(ctx)
@@ -148,7 +152,10 @@ func (s *Service) UpdateQQBotChannel(ctx context.Context, update QQBotChannelUpd
 }
 
 func (s *Service) DisconnectQQBotChannel(ctx context.Context) (QQBotChannelResource, error) {
-	if err := s.store.DisconnectQQBotChannel(ctx); err != nil {
+	if err := s.store.DisconnectQQBotChannel(); err != nil {
+		return QQBotChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return QQBotChannelResource{}, err
 	}
 	return s.GetQQBotChannel(ctx)
@@ -172,9 +179,8 @@ func (s *Service) InstallWeComAppPlugin(ctx context.Context) (PluginInstallResul
 	if err != nil {
 		return PluginInstallResult{}, err
 	}
-	restarted, restartErr := restartOpenClaw(ctx)
-	if restartErr != nil {
-		return PluginInstallResult{}, restartErr
+	if err := s.restarter.Restart(ctx); err != nil {
+		return PluginInstallResult{}, err
 	}
 	if err := s.refreshCacheSync(ctx, "plugin-install"); err != nil {
 		return PluginInstallResult{}, err
@@ -189,7 +195,7 @@ func (s *Service) InstallWeComAppPlugin(ctx context.Context) (PluginInstallResul
 		PluginID:  "wecom-app",
 		Spec:      weComAppPluginSpec,
 		Installed: plugin.Installed,
-		Restarted: restarted,
+		Restarted: true,
 		Output:    strings.TrimSpace(output),
 		Plugin:    plugin,
 	}, nil
@@ -200,8 +206,11 @@ func (s *Service) UpdateWeComAppChannel(
 	update WeComAppChannelUpdate,
 ) (WeComAppChannelResource, error) {
 	update.AllowFrom = normalizeStringList(update.AllowFrom)
-	cfg, err := s.store.UpdateWeComAppChannel(ctx, update)
+	cfg, err := s.store.UpdateWeComAppChannel(update)
 	if err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return WeComAppChannelResource{}, err
 	}
 	plugins, err := s.listPlugins(ctx)
@@ -212,7 +221,10 @@ func (s *Service) UpdateWeComAppChannel(
 }
 
 func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChannelResource, error) {
-	if err := s.store.DisconnectWeComAppChannel(ctx); err != nil {
+	if err := s.store.DisconnectWeComAppChannel(); err != nil {
+		return WeComAppChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return WeComAppChannelResource{}, err
 	}
 	return s.GetWeComAppChannel(ctx)
@@ -253,7 +265,7 @@ func (s *Service) UpdateDefaultModel(ctx context.Context, defaultModel string) (
 	if err := s.cli.SetDefaultModel(ctx, defaultModel); err != nil {
 		return ModelSettingResource{}, err
 	}
-	if _, err := restartOpenClaw(ctx); err != nil {
+	if err := s.restarter.Restart(ctx); err != nil {
 		return ModelSettingResource{}, fmt.Errorf("restart after model change: %w", err)
 	}
 	if err := s.refreshCacheSync(ctx, "set-default-model"); err != nil {
@@ -294,7 +306,10 @@ func (s *Service) ConnectProviderAPIKey(ctx context.Context, provider string, ap
 	if !supportsAPIKeyProvider(provider) {
 		return ProviderResource{}, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
-	if err := s.store.UpsertProviderAPIKey(ctx, provider, apiKey); err != nil {
+	if err := s.store.UpsertProviderAPIKey(provider, apiKey); err != nil {
+		return ProviderResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return ProviderResource{}, err
 	}
 	if err := s.refreshCacheSync(ctx, "connect-api-key"); err != nil {
@@ -307,7 +322,10 @@ func (s *Service) DisconnectProvider(ctx context.Context, provider string) (Prov
 	if !isManagedProvider(provider) {
 		return ProviderResource{}, &NotFoundError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
-	if err := s.store.DisconnectProvider(ctx, provider); err != nil {
+	if err := s.store.DisconnectProvider(provider); err != nil {
+		return ProviderResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return ProviderResource{}, err
 	}
 	if err := s.refreshCacheSync(ctx, "disconnect-provider"); err != nil {
@@ -333,15 +351,21 @@ func (s *Service) UpdateTelegramChannel(
 	}
 	update.AllowFrom = normalizedAllowFrom
 
-	cfg, err := s.store.UpdateTelegramChannel(ctx, update)
+	cfg, err := s.store.UpdateTelegramChannel(update)
 	if err != nil {
+		return TelegramChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return TelegramChannelResource{}, err
 	}
 	return buildTelegramChannelResource(cfg, "saved"), nil
 }
 
 func (s *Service) DisconnectTelegramChannel(ctx context.Context) (TelegramChannelResource, error) {
-	if err := s.store.DisconnectTelegramChannel(ctx); err != nil {
+	if err := s.store.DisconnectTelegramChannel(); err != nil {
+		return TelegramChannelResource{}, err
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
 		return TelegramChannelResource{}, err
 	}
 	return s.GetTelegramChannel()
@@ -410,9 +434,20 @@ func (s *Service) ResetAuth(ctx context.Context, provider string, restart bool) 
 	if !isSupportedResetProvider(provider) {
 		return AuthResetResult{}, &InputError{Message: fmt.Sprintf("unsupported provider: %s", provider)}
 	}
-	result, err := s.store.ResetAuth(ctx, provider, restart, s.cli)
+	result, err := s.store.ResetAuth(provider)
 	if err != nil {
 		return AuthResetResult{}, err
+	}
+	result.Restart = restart
+	if !restart {
+		result.RestartSkipped = true
+		s.triggerCacheRefresh("reset-auth")
+		return result, nil
+	}
+	if err := s.restarter.Restart(ctx); err != nil {
+		result.RestartError = err.Error()
+	} else {
+		result.Restarted = true
 	}
 	s.triggerCacheRefresh("reset-auth")
 	return result, nil

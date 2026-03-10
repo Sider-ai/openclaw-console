@@ -56,18 +56,20 @@ type codexSession struct {
 }
 
 type SessionManager struct {
-	cli   *CLI
-	store *Store
+	cli       *CLI
+	store     *Store
+	restarter Restarter
 
 	mu       sync.RWMutex
 	sessions map[string]*codexSession
 }
 
-func NewSessionManager(cli *CLI, store *Store) *SessionManager {
+func NewSessionManager(cli *CLI, store *Store, restarter Restarter) *SessionManager {
 	return &SessionManager{
-		cli:      cli,
-		store:    store,
-		sessions: map[string]*codexSession{},
+		cli:       cli,
+		store:     store,
+		restarter: restarter,
+		sessions:  map[string]*codexSession{},
 	}
 }
 
@@ -311,7 +313,26 @@ func (m *SessionManager) mergeFromTemp(s *codexSession) error {
 	s.state = sessionStateMergingCredentials
 	m.mu.Unlock()
 
-	if err := m.store.MergeCodexFromTemp(context.Background(), s.tmpPaths, s.defaultModelHint, m.cli); err != nil {
+	ctx := context.Background()
+	if err := m.store.MergeCodexFromTemp(s.tmpPaths); err != nil {
+		m.mu.Lock()
+		s.state = sessionStateFailed
+		s.errorCode = "MERGE_CREDENTIALS_FAILED"
+		s.errorMessage = err.Error()
+		m.mu.Unlock()
+		return err
+	}
+	if s.defaultModelHint != "" {
+		if err := m.cli.SetDefaultModel(ctx, s.defaultModelHint); err != nil {
+			m.mu.Lock()
+			s.state = sessionStateFailed
+			s.errorCode = "MERGE_CREDENTIALS_FAILED"
+			s.errorMessage = err.Error()
+			m.mu.Unlock()
+			return err
+		}
+	}
+	if err := m.restarter.Restart(ctx); err != nil {
 		m.mu.Lock()
 		s.state = sessionStateFailed
 		s.errorCode = "MERGE_CREDENTIALS_FAILED"

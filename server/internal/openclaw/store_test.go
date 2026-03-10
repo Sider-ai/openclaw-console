@@ -1,7 +1,6 @@
 package openclaw
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -9,10 +8,8 @@ import (
 )
 
 func TestStore_TelegramChannel_CRUD(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
 
 	// Get returns defaults when no config exists
 	cfg, err := store.GetTelegramChannelConfig()
@@ -28,7 +25,7 @@ func TestStore_TelegramChannel_CRUD(t *testing.T) {
 
 	// Update
 	token := "bot123:token"
-	updated, err := store.UpdateTelegramChannel(ctx, TelegramChannelUpdate{
+	updated, err := store.UpdateTelegramChannel(TelegramChannelUpdate{
 		Enabled:   true,
 		BotToken:  &token,
 		DMPolicy:  "allowlist",
@@ -57,7 +54,7 @@ func TestStore_TelegramChannel_CRUD(t *testing.T) {
 	}
 
 	// Disconnect
-	if err := store.DisconnectTelegramChannel(ctx); err != nil {
+	if err := store.DisconnectTelegramChannel(); err != nil {
 		t.Fatal(err)
 	}
 	cfg3, err := store.GetTelegramChannelConfig()
@@ -73,10 +70,8 @@ func TestStore_TelegramChannel_CRUD(t *testing.T) {
 }
 
 func TestStore_QQBotChannel_CRUD(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
 
 	// Get returns defaults when no config exists
 	cfg, err := store.GetQQBotChannelConfig()
@@ -92,7 +87,7 @@ func TestStore_QQBotChannel_CRUD(t *testing.T) {
 
 	// Update
 	secret := "s3cret"
-	updated, err := store.UpdateQQBotChannel(ctx, QQBotChannelUpdate{
+	updated, err := store.UpdateQQBotChannel(QQBotChannelUpdate{
 		Enabled:      true,
 		AppID:        "app123",
 		ClientSecret: &secret,
@@ -118,7 +113,7 @@ func TestStore_QQBotChannel_CRUD(t *testing.T) {
 	}
 
 	// Disconnect
-	if err := store.DisconnectQQBotChannel(ctx); err != nil {
+	if err := store.DisconnectQQBotChannel(); err != nil {
 		t.Fatal(err)
 	}
 	cfg3, err := store.GetQQBotChannelConfig()
@@ -131,10 +126,8 @@ func TestStore_QQBotChannel_CRUD(t *testing.T) {
 }
 
 func TestStore_WeComAppChannel_CRUD(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
 
 	// Get returns defaults when no config exists
 	cfg, err := store.GetWeComAppChannelConfig()
@@ -155,7 +148,7 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 	secret := "corp-secret"
 	token := "msg-token"
 	aesKey := "aes-key-32chars"
-	updated, err := store.UpdateWeComAppChannel(ctx, WeComAppChannelUpdate{
+	updated, err := store.UpdateWeComAppChannel(WeComAppChannelUpdate{
 		Enabled:        true,
 		CorpID:         "corp123",
 		CorpSecret:     &secret,
@@ -188,7 +181,7 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 	}
 
 	// Disconnect
-	if err := store.DisconnectWeComAppChannel(ctx); err != nil {
+	if err := store.DisconnectWeComAppChannel(); err != nil {
 		t.Fatal(err)
 	}
 	cfg3, err := store.GetWeComAppChannelConfig()
@@ -201,12 +194,10 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 }
 
 func TestStore_UpsertProviderAPIKey(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
 
-	if err := store.UpsertProviderAPIKey(ctx, "openai", "sk-test-key"); err != nil {
+	if err := store.UpsertProviderAPIKey("openai", "sk-test-key"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,18 +239,16 @@ func TestStore_UpsertProviderAPIKey(t *testing.T) {
 }
 
 func TestStore_DisconnectProvider(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
 
 	// First upsert
-	if err := store.UpsertProviderAPIKey(ctx, "openai", "sk-key"); err != nil {
+	if err := store.UpsertProviderAPIKey("openai", "sk-key"); err != nil {
 		t.Fatal(err)
 	}
 
 	// Disconnect
-	if err := store.DisconnectProvider(ctx, "openai"); err != nil {
+	if err := store.DisconnectProvider("openai"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -278,7 +267,6 @@ func TestStore_DisconnectProvider(t *testing.T) {
 }
 
 func TestStore_ListAuthProfiles(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
 
@@ -315,7 +303,6 @@ func TestStore_ListAuthProfiles(t *testing.T) {
 }
 
 func TestStore_GetAuthProfile(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
 
@@ -347,11 +334,8 @@ func TestStore_GetAuthProfile(t *testing.T) {
 }
 
 func TestStore_ResetAuth(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
-	ctx := context.Background()
-	cli := &mockCLI{}
 
 	writeTestJSON(t, paths.AuthStorePath, AuthStore{
 		Version: 1,
@@ -369,7 +353,7 @@ func TestStore_ResetAuth(t *testing.T) {
 		},
 	})
 
-	result, err := store.ResetAuth(ctx, "openai", false, cli)
+	result, err := store.ResetAuth("openai")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,10 +364,6 @@ func TestStore_ResetAuth(t *testing.T) {
 	if result.AuthBackupPath == "" {
 		t.Error("expected backup path")
 	}
-	if result.RestartSkipped != true {
-		t.Error("expected restart skipped")
-	}
-
 	// Verify openai profile removed but anthropic remains
 	var auth AuthStore
 	data, err := os.ReadFile(paths.AuthStorePath)
@@ -407,7 +387,6 @@ func TestStore_ResetAuth(t *testing.T) {
 }
 
 func TestStore_EmptyState(t *testing.T) {
-	t.Setenv("OPENCLAW_ADMIN_SKIP_RESTART", "1")
 	paths := newTestPaths(t)
 	store := NewStore(paths)
 

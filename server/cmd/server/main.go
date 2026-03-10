@@ -25,14 +25,15 @@ func main() {
 
 	store := openclaw.NewStore(paths)
 	cli := openclaw.NewCLI(paths)
-	service := openclaw.NewService(cli, store)
+	restarter := openclaw.NewSystemRestarter()
+	service := openclaw.NewService(cli, store, restarter)
 	warmupCtx, warmupCancel := context.WithTimeout(context.Background(), 45*time.Second)
 	if err := service.Warmup(warmupCtx); err != nil {
 		log.Warn().Err(err).Msg("openclaw metadata warmup failed")
 	}
 	warmupCancel()
 	service.StartBackground(context.Background())
-	sessions := openclaw.NewSessionManager(cli, store)
+	sessions := openclaw.NewSessionManager(cli, store, restarter)
 
 	a := api.NewAPI(service, sessions)
 	router := api.NewRouter(a, api.RouterConfig{
