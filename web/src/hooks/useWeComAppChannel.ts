@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import type { PluginInstallResult, WeComAppChannel } from "../lib/types";
 
+const DEFAULT_WECOM_WEBHOOK_PATH = "/wecom-app";
+
 type WeComAppForm = {
   enabled: boolean;
   corpId: string;
@@ -36,7 +38,7 @@ export function useWeComAppChannel(enabled: boolean, onChanged?: () => Promise<v
     agentId: "",
     token: "",
     encodingAesKey: "",
-    webhookPath: "",
+    webhookPath: DEFAULT_WECOM_WEBHOOK_PATH,
     apiBaseUrl: "",
     dmPolicy: "open",
     allowFrom: ["*"],
@@ -51,7 +53,7 @@ export function useWeComAppChannel(enabled: boolean, onChanged?: () => Promise<v
       agentId: nextChannel.agentId || "",
       token: "",
       encodingAesKey: "",
-      webhookPath: nextChannel.webhookPath || "",
+      webhookPath: nextChannel.webhookPath || DEFAULT_WECOM_WEBHOOK_PATH,
       apiBaseUrl: nextChannel.apiBaseUrl || "",
       dmPolicy: nextChannel.dmPolicy || "open",
       allowFrom: normalizeAllowFrom(nextChannel.allowFrom || ["*"]),
@@ -124,7 +126,7 @@ export function useWeComAppChannel(enabled: boolean, onChanged?: () => Promise<v
         enabled: form.enabled,
         corpId: form.corpId.trim(),
         agentId: form.agentId.trim(),
-        webhookPath: form.webhookPath.trim(),
+        webhookPath: form.webhookPath.trim() || DEFAULT_WECOM_WEBHOOK_PATH,
         apiBaseUrl: form.apiBaseUrl.trim(),
         dmPolicy: form.dmPolicy,
         allowFrom: normalizeAllowFrom(form.allowFrom),
