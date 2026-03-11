@@ -152,7 +152,7 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 		Enabled:        true,
 		CorpID:         "corp123",
 		CorpSecret:     &secret,
-		AgentID:        "agent1",
+		AgentID:        "1000002",
 		Token:          &token,
 		EncodingAESKey: &aesKey,
 		DMPolicy:       "open",
@@ -179,6 +179,35 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 	if cfg2.CorpSecret != secret {
 		t.Errorf("persisted corpSecret = %q", cfg2.CorpSecret)
 	}
+	var raw map[string]any
+	data, err := os.ReadFile(paths.ConfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	channels, ok := raw["channels"].(map[string]any)
+	if !ok {
+		t.Fatal("channels not found in config")
+	}
+	wecom, ok := channels["wecom-app"].(map[string]any)
+	if !ok {
+		t.Fatal("wecom-app not found in config")
+	}
+	got, ok := wecom["agentId"].(float64)
+	if !ok {
+		t.Fatalf("agentId should be stored as number, got %T", wecom["agentId"])
+	}
+	if int64(got) != 1000002 {
+		t.Fatalf("agentId = %v", got)
+	}
+	if got, ok := wecom["encodingAESKey"].(string); !ok || got != aesKey {
+		t.Fatalf("encodingAESKey = %#v", wecom["encodingAESKey"])
+	}
+	if _, ok := wecom["encodingAesKey"]; ok {
+		t.Fatalf("legacy encodingAesKey key should not be written: %#v", wecom["encodingAesKey"])
+	}
 
 	// Disconnect
 	if err := store.DisconnectWeComAppChannel(); err != nil {
@@ -190,6 +219,63 @@ func TestStore_WeComAppChannel_CRUD(t *testing.T) {
 	}
 	if cfg3.Enabled {
 		t.Error("expected disabled after disconnect")
+	}
+}
+
+func TestStore_GetWeComAppChannelConfig_ReadsNumericAgentID(t *testing.T) {
+	paths := newTestPaths(t)
+	if err := os.WriteFile(paths.ConfigPath, []byte(`{
+  "channels": {
+    "wecom-app": {
+      "enabled": true,
+      "corpId": "ww123",
+      "agentId": 1000002,
+      "token": "token",
+      "encodingAesKey": "aes"
+    }
+  }
+}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewStore(paths)
+	cfg, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentID != "1000002" {
+		t.Fatalf("agentID = %q", cfg.AgentID)
+	}
+	if cfg.EncodingAESKey != "aes" {
+		t.Fatalf("encodingAESKey = %q", cfg.EncodingAESKey)
+	}
+}
+
+func TestStore_GetWeComAppChannelConfig_ReadsEncodingAESKey(t *testing.T) {
+	paths := newTestPaths(t)
+	if err := os.WriteFile(paths.ConfigPath, []byte(`{
+  "channels": {
+    "wecom-app": {
+      "enabled": true,
+      "corpId": "ww123",
+      "agentId": 1000002,
+      "token": "token",
+      "encodingAESKey": "aes-new"
+    }
+  }
+}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewStore(paths)
+	cfg, err := store.GetWeComAppChannelConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.EncodingAESKey != "aes-new" {
+		t.Fatalf("encodingAESKey = %q", cfg.EncodingAESKey)
 	}
 }
 

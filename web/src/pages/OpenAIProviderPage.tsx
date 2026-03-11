@@ -63,7 +63,7 @@ export function OpenAIProviderPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">OpenAI Provider</CardTitle>
-            <a href={providerDocsURL("openai")} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
+            <a href={providerDocsURL("openai")} target="_blank" rel="noreferrer" className="text-sm text-primary">
               Docs
             </a>
           </div>
@@ -157,7 +157,7 @@ export function OpenAIProviderPage({
                         type="button"
                         variant="outline"
                         className="border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 gap-1.5"
-                        onClick={() => void handleCopyAuthURL(codexSession.authUrl)}
+                        onClick={() => void handleCopyAuthURL(codexSession.authUrl ?? "")}
                       >
                         {copyState === "copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy Failed" : "Copy Link"}

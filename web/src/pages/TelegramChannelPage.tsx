@@ -105,7 +105,7 @@ export function TelegramChannelPage({
               <CardTitle className="text-base">Telegram Channel</CardTitle>
               <CardDescription className="mt-1">Connect OpenClaw to Telegram with a Telegram bot. Default mode is long polling, so you do not need a public webhook URL for the first setup.</CardDescription>
             </div>
-            <a href={TELEGRAM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
+            <a href={TELEGRAM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary">
               Open Docs
             </a>
           </div>

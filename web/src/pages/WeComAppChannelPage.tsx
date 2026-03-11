@@ -37,7 +37,17 @@ type WeComAppChannelPageProps = {
   onSave: () => Promise<void>;
 };
 
-const WECOM_DOCS_URL = "https://github.com/openclaw-china/wecom-app";
+const WECOM_DOCS_URL = "https://github.com/BytePioneer-AI/openclaw-china";
+const WECOM_FULL_GUIDE_URL = "https://github.com/BytePioneer-AI/openclaw-china/blob/main/doc/guides/wecom-app/configuration.md";
+const DEFAULT_WECOM_WEBHOOK_PATH = "/wecom-app";
+
+function normalizeWebhookPath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return DEFAULT_WECOM_WEBHOOK_PATH;
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
 
 export function WeComAppChannelPage({
   channel,
@@ -55,6 +65,8 @@ export function WeComAppChannelPage({
   const pluginInstalled = channel?.pluginInstalled === true;
   const statusLabel = pluginInstalled ? (channel?.configured ? "Configured" : "Not Configured") : "Plugin Not Installed";
   const isConnected = pluginInstalled && channel?.configured;
+  const effectiveWebhookPath = normalizeWebhookPath(form.webhookPath || channel?.webhookPath || "");
+  const callbackURL = typeof window === "undefined" ? effectiveWebhookPath : `http://${window.location.hostname}:18789${effectiveWebhookPath}`;
 
   function appendAllowFromValues(raw: string) {
     const values = raw
@@ -95,7 +107,7 @@ export function WeComAppChannelPage({
               <CardTitle className="text-base">WeCom App</CardTitle>
               <CardDescription className="mt-1">Connect OpenClaw to WeCom (企业微信自建应用) through the community plugin. This is not a built-in OpenClaw channel.</CardDescription>
             </div>
-            <a href={WECOM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
+            <a href={WECOM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary">
               Open Plugin Docs
             </a>
           </div>
@@ -156,14 +168,14 @@ export function WeComAppChannelPage({
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
                   Open the{" "}
-                  <a href="https://work.weixin.qq.com/" rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">
+                  <a href="https://work.weixin.qq.com/" rel="noreferrer" target="_blank" className="text-primary">
                     WeCom Admin Console
                   </a>{" "}
                   and create a self-built application (自建应用).
                 </li>
                 <li>
                   Review the{" "}
-                  <a href={WECOM_DOCS_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">
+                  <a href={WECOM_DOCS_URL} rel="noreferrer" target="_blank" className="text-primary">
                     plugin documentation
                   </a>{" "}
                   to understand required credentials and callback setup.
@@ -177,36 +189,54 @@ export function WeComAppChannelPage({
         <>
           <Card className="shadow-sm ring-1 ring-border/60">
             <CardHeader>
+              <CardTitle className="text-base">Before you start</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>You will need these prerequisites before the setup below will work:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>A self-built WeCom application already exists in the WeCom Admin Console.</li>
+                  <li>You have the <Code>Corp ID</Code>, <Code>Corp Secret</Code>, <Code>Agent ID</Code>, <Code>Token</Code>, and <Code>EncodingAESKey</Code>.</li>
+                  <li>The server public IP has been added to the WeCom trusted IP allowlist.</li>
+                </ul>
+                <p>
+                  If you have not created the application yet, start with the{" "}
+                  <a href={WECOM_FULL_GUIDE_URL} rel="noreferrer" target="_blank" className="text-primary">
+                    full WeCom App guide
+                  </a>.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm ring-1 ring-border/60">
+            <CardHeader>
               <CardTitle className="text-base">Quick setup</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="shadow-none">
                   <CardContent className="p-4">
-                    <strong className="font-semibold">1. Create a WeCom App</strong>
-                    <p className="text-sm text-muted-foreground mt-1">Log in to the WeCom Admin Console and create a self-built application. Note down the Corp ID, Corp Secret, and Agent ID.</p>
-                    <p className="mt-2">
-                      <a href="https://work.weixin.qq.com/" rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
-                        Open WeCom Admin
-                      </a>
-                    </p>
+                    <strong className="font-semibold">1. Install plugin</strong>
+                    <p className="text-sm text-muted-foreground mt-1">Keep the community plugin installed, then refresh this page if you changed anything outside the console.</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-none">
                   <CardContent className="p-4">
-                    <strong className="font-semibold">2. Configure callback</strong>
-                    <p className="text-sm text-muted-foreground mt-1">Set up the API callback URL in the WeCom Admin Console. You will need the <Code>Token</Code> and <Code>EncodingAESKey</Code> from the callback settings.</p>
+                    <strong className="font-semibold">2. Fill credentials</strong>
+                    <p className="text-sm text-muted-foreground mt-1">Enter the WeCom application credentials below. Leave secret fields blank if you want to keep the saved values.</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-none">
                   <CardContent className="p-4">
-                    <strong className="font-semibold">3. Fill in credentials</strong>
-                    <p className="text-sm text-muted-foreground mt-1">Enter all required credentials below, save, and send a test message from WeCom to verify the integration.</p>
-                    <p className="mt-2">
-                      <a href={WECOM_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
-                        Open Plugin Guide
-                      </a>
-                    </p>
+                    <strong className="font-semibold">3. Configure callback</strong>
+                    <p className="text-sm text-muted-foreground mt-1">Use <Code>{callbackURL}</Code> in WeCom Admin and keep the webhook path aligned with <Code>{effectiveWebhookPath}</Code>.</p>
+                  </CardContent>
+                </Card>
+                <Card className="shadow-none">
+                  <CardContent className="p-4">
+                    <strong className="font-semibold">4. Save and verify</strong>
+                    <p className="text-sm text-muted-foreground mt-1">Save the configuration here, then save the callback settings in WeCom Admin and send a test message.</p>
                   </CardContent>
                 </Card>
               </div>
@@ -223,6 +253,10 @@ export function WeComAppChannelPage({
               </div>
             </CardHeader>
             <CardContent>
+              <div className="mb-6 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+                <p>Recommended callback URL: <Code>{callbackURL}</Code></p>
+                <p className="mt-2">The default webhook path is <Code>{DEFAULT_WECOM_WEBHOOK_PATH}</Code>. If you change it here, update the same path in WeCom Admin.</p>
+              </div>
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Enable WeCom App</Label>
@@ -307,15 +341,16 @@ export function WeComAppChannelPage({
 
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="wecom-webhook-path" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Webhook Path</Label>
-                  <p className="text-sm text-muted-foreground">Optional. Custom path for the webhook endpoint.</p>
+                  <p className="text-sm text-muted-foreground">Webhook endpoint path. The official guide uses <Code>{DEFAULT_WECOM_WEBHOOK_PATH}</Code>.</p>
                   <Input
                     id="wecom-webhook-path"
                     className="max-w-md transition-colors duration-150"
                     onChange={(event) => onFormChange((prev) => ({ ...prev, webhookPath: event.target.value }))}
-                    placeholder="/webhook/wecom"
+                    placeholder={DEFAULT_WECOM_WEBHOOK_PATH}
                     type="text"
                     value={form.webhookPath}
                   />
+                  <p className="text-xs text-muted-foreground">Effective callback URL: <Code>{callbackURL}</Code></p>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -346,7 +381,13 @@ export function WeComAppChannelPage({
                           onChange={() => onFormChange((prev) => ({ ...prev, dmPolicy: policy }))}
                           className="h-4 w-4"
                         />
-                        <Label htmlFor={`dm-policy-${policy}`}>{policy === "open" ? "Open (anyone)" : policy === "allowlist" ? "Allowlist" : "Disabled"}</Label>
+                        <Label htmlFor={`dm-policy-${policy}`}>
+                          {policy === "open"
+                            ? "Open (anyone)"
+                            : policy === "allowlist"
+                                ? "Allowlist"
+                                : "Disabled"}
+                        </Label>
                       </div>
                     ))}
                   </div>
@@ -418,13 +459,14 @@ export function WeComAppChannelPage({
 
           <Card className="shadow-sm ring-1 ring-border/60">
             <CardHeader>
-              <CardTitle className="text-base">How To Verify It Works</CardTitle>
+              <CardTitle className="text-base">Troubleshooting</CardTitle>
             </CardHeader>
             <CardContent>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Save the configuration on this page.</li>
-                <li>Ensure the API callback URL is correctly configured in the WeCom Admin Console.</li>
-                <li>Send a direct message to the application from WeCom to confirm the bot can receive and reply.</li>
+                <li>If callback validation fails, confirm the URL in WeCom Admin is exactly <Code>{callbackURL}</Code>.</li>
+                <li>If WeCom reports the callback is unreachable, re-check the trusted IP allowlist and external access to the gateway.</li>
+                <li>If validation still fails after saving, re-enter the <Code>Token</Code> and <Code>EncodingAESKey</Code> from WeCom Admin and save again here.</li>
+                <li>After callback validation succeeds, send a direct message to the application to confirm the bot can receive and reply.</li>
               </ol>
             </CardContent>
           </Card>

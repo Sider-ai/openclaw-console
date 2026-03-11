@@ -35,7 +35,7 @@ export function ProviderPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">{activeProviderLabel} Provider</CardTitle>
-            <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">
+            <a href={providerDocsURL(providerID)} target="_blank" rel="noreferrer" className="text-sm text-primary">
               Docs
             </a>
           </div>

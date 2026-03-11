@@ -91,7 +91,7 @@ export function QQBotChannelPage({
               <CardTitle className="text-base">QQ Bot</CardTitle>
               <CardDescription className="mt-1">Connect OpenClaw to Tencent QQ Bot through the community plugin. This is not a built-in OpenClaw channel.</CardDescription>
             </div>
-            <a href={QQBOT_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
+            <a href={QQBOT_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary">
               Open Plugin Docs
             </a>
           </div>
@@ -152,7 +152,7 @@ export function QQBotChannelPage({
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
                   Open{" "}
-                  <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">
+                  <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary">
                     QQ Bot for OpenClaw
                   </a>
                   , then sign in or register and create your QQ Bot application.
@@ -176,7 +176,7 @@ export function QQBotChannelPage({
                     <strong className="font-semibold">1. Open QQ Bot Platform</strong>
                     <p className="text-sm text-muted-foreground mt-1">Use the official OpenClaw entry page on QQ Open Platform. From there you can sign in, register if needed, and create your QQ Bot application.</p>
                     <p className="mt-2">
-                      <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
+                      <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-sm text-primary">
                         Open QQ Bot Platform
                       </a>
                     </p>
@@ -193,7 +193,7 @@ export function QQBotChannelPage({
                     <strong className="font-semibold">3. Start with sandbox direct messages</strong>
                     <p className="text-sm text-muted-foreground mt-1">The plugin README recommends beginning with QQ sandbox direct messages before expanding to other message types.</p>
                     <p className="mt-2">
-                      <a href={QQBOT_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary underline-offset-4 hover:underline">
+                      <a href={QQBOT_DOCS_URL} rel="noreferrer" target="_blank" className="text-sm text-primary">
                         Open Plugin Guide
                       </a>
                     </p>
@@ -229,7 +229,7 @@ export function QQBotChannelPage({
 
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="app-id" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">App ID</Label>
-                  <p className="text-sm text-muted-foreground">Paste the QQ Bot <Code>App ID</Code> from <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">QQ Bot for OpenClaw</a>.</p>
+                  <p className="text-sm text-muted-foreground">Paste the QQ Bot <Code>App ID</Code> from <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary">QQ Bot for OpenClaw</a>.</p>
                   <Input
                     id="app-id"
                     className="max-w-md transition-colors duration-150"
@@ -338,7 +338,7 @@ export function QQBotChannelPage({
             <CardContent>
               <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
                 <li>Save the configuration on this page.</li>
-                <li>Open <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary underline-offset-4 hover:underline">QQ Bot for OpenClaw</a> and keep the bot in sandbox mode.</li>
+                <li>Open <a href={QQBOT_OFFICIAL_URL} rel="noreferrer" target="_blank" className="text-primary">QQ Bot for OpenClaw</a> and keep the bot in sandbox mode.</li>
                 <li>Add the bot to your own QQ account in sandbox testing.</li>
                 <li>Send a direct message to confirm the bot can receive and reply.</li>
               </ol>

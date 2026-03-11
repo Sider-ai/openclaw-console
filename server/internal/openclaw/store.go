@@ -670,12 +670,15 @@ func readWeComAppChannelConfig(root map[string]any) WeComAppChannelConfig {
 		CorpSecretFile: readString(rawWecom, "corpSecretFile"),
 		AgentID:        readString(rawWecom, "agentId"),
 		Token:          readString(rawWecom, "token"),
-		EncodingAESKey: readString(rawWecom, "encodingAesKey"),
-		WebhookPath:    readString(rawWecom, "webhookPath"),
-		APIBaseURL:     readString(rawWecom, "apiBaseUrl"),
-		DMPolicy:       defaultString(readString(rawWecom, "dmPolicy"), "open"),
-		AllowFrom:      defaultStringList(readStringList(rawWecom, "allowFrom"), []string{"*"}),
-		WelcomeText:    readString(rawWecom, "welcomeText"),
+		EncodingAESKey: firstNonEmptyString(
+			readString(rawWecom, "encodingAESKey"),
+			readString(rawWecom, "encodingAesKey"),
+		),
+		WebhookPath: readString(rawWecom, "webhookPath"),
+		APIBaseURL:  readString(rawWecom, "apiBaseUrl"),
+		DMPolicy:    defaultString(readString(rawWecom, "dmPolicy"), "open"),
+		AllowFrom:   defaultStringList(readStringList(rawWecom, "allowFrom"), []string{"*"}),
+		WelcomeText: readString(rawWecom, "welcomeText"),
 	}
 }
 
@@ -695,13 +698,13 @@ func wecomAppChannelConfigMap(cfg WeComAppChannelConfig) map[string]any {
 		out["corpSecretFile"] = cfg.CorpSecretFile
 	}
 	if cfg.AgentID != "" {
-		out["agentId"] = cfg.AgentID
+		out["agentId"] = stringOrNumber(cfg.AgentID)
 	}
 	if cfg.Token != "" {
 		out["token"] = cfg.Token
 	}
 	if cfg.EncodingAESKey != "" {
-		out["encodingAesKey"] = cfg.EncodingAESKey
+		out["encodingAESKey"] = cfg.EncodingAESKey
 	}
 	if cfg.WebhookPath != "" {
 		out["webhookPath"] = cfg.WebhookPath
@@ -728,8 +731,27 @@ func setNestedMapValue(root map[string]any, path []string, value any) {
 }
 
 func readString(root map[string]any, key string) string {
-	value, _ := root[key].(string)
-	return strings.TrimSpace(value)
+	switch value := root[key].(type) {
+	case string:
+		return strings.TrimSpace(value)
+	case json.Number:
+		return strings.TrimSpace(value.String())
+	case float64:
+		return strconv.FormatInt(int64(value), 10)
+	case int:
+		return strconv.Itoa(value)
+	case int64:
+		return strconv.FormatInt(value, 10)
+	default:
+		return ""
+	}
+}
+
+func stringOrNumber(value string) any {
+	if n, err := strconv.ParseInt(value, 10, 64); err == nil {
+		return n
+	}
+	return value
 }
 
 func readBool(root map[string]any, key string) bool {
@@ -827,6 +849,15 @@ func defaultString(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func profileStatus(cred AuthCredential) string {
