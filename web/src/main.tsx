@@ -10,7 +10,7 @@ function detectRouterBasename(): string {
     return "/";
   }
 
-  const knownPrefixes = ["/siderclaw-console"];
+  const knownPrefixes = ["/openclaw-console"];
   const pathname = window.location.pathname;
 
   const matched = knownPrefixes.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

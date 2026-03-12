@@ -1,4 +1,4 @@
-# sider-openclaw-console
+# openclaw-console
 
 OpenClaw Console monorepo:
 
