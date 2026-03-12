@@ -101,6 +101,18 @@ export function formatContextWindow(windowSize: number): string {
   return String(windowSize);
 }
 
+export function extensionFromPath(
+  pathname: string,
+  extensions: { id: string; basePath: string }[]
+): string | null {
+  for (const ext of extensions) {
+    if (pathname === ext.basePath || pathname.startsWith(ext.basePath + "/")) {
+      return ext.id;
+    }
+  }
+  return null;
+}
+
 export function providerFromModelKey(modelKey: string): string {
   const [provider = ""] = modelKey.split("/", 1);
   return provider.trim();

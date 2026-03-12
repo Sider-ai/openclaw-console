@@ -1,10 +1,13 @@
 import type { PropsWithChildren } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, Bot, ChevronRight, Cpu, Loader2, MessageSquare, Wrench } from "lucide-react";
+import {
+  AlertCircle, Bot, ChevronRight, Cpu, Database, Download, Globe, Loader2,
+  MessageSquare, RefreshCw, Server, Settings, Shield, Wrench
+} from "lucide-react";
 
 import { ROOT_NAV_ITEMS } from "../lib/navigation";
-import type { BuildInfo, ChannelNav, ModelProviderNav, NavKey } from "../lib/types";
+import type { BuildInfo, ChannelNav, ExtensionInfo, ModelProviderNav, NavKey } from "../lib/types";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +35,19 @@ const ROOT_NAV_ICONS: Record<string, LucideIcon> = {
   tools: Wrench
 };
 
+const EXTENSION_ICON_MAP: Record<string, LucideIcon> = {
+  "database": Database,
+  "download": Download,
+  "globe": Globe,
+  "refresh-cw": RefreshCw,
+  "server": Server,
+  "settings": Settings,
+  "shield": Shield,
+  "wrench": Wrench,
+};
+
 type AppShellProps = PropsWithChildren<{
+  activeExtensionId: string | null;
   activeNav: NavKey;
   apiBase: string;
   buildInfo: BuildInfo | null;
@@ -40,6 +55,7 @@ type AppShellProps = PropsWithChildren<{
   channelRoute: string | null;
   channelsExpanded: boolean;
   error: string;
+  extensions: ExtensionInfo[];
   loading: boolean;
   modelsExpanded: boolean;
   onNavigate: NavigateFunction;
@@ -50,6 +66,7 @@ type AppShellProps = PropsWithChildren<{
 }>;
 
 export function AppShell({
+  activeExtensionId,
   activeNav,
   apiBase,
   buildInfo,
@@ -58,6 +75,7 @@ export function AppShell({
   channelsExpanded,
   children,
   error,
+  extensions,
   loading,
   modelsExpanded,
   onNavigate,
@@ -185,6 +203,29 @@ export function AppShell({
               </Collapsible>
             </SidebarMenu>
           </SidebarGroup>
+
+          {extensions.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel>System</SidebarGroupLabel>
+              <SidebarMenu>
+                {extensions.map((ext) => {
+                  const Icon = EXTENSION_ICON_MAP[ext.icon] || Settings;
+                  return (
+                    <SidebarMenuItem key={ext.id}>
+                      <SidebarMenuButton
+                        isActive={activeExtensionId === ext.id}
+                        onClick={() => onNavigate(ext.basePath)}
+                        tooltip={ext.displayName}
+                      >
+                        <Icon />
+                        <span>{ext.displayName}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          )}
         </SidebarContent>
         <SidebarFooter>
           <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/30 px-3 py-2">

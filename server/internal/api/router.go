@@ -19,7 +19,7 @@ type RouterConfig struct {
 	AuthToken string
 }
 
-func NewRouter(a *API, cfg RouterConfig) http.Handler {
+func NewRouter(a *API, cfg RouterConfig, extRoutes []ExtensionRoute, extInfos []ExtensionInfo) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
@@ -35,6 +35,12 @@ func NewRouter(a *API, cfg RouterConfig) http.Handler {
 	humaConfig := huma.DefaultConfig("OpenClaw Console API", "1.0.0")
 	humaAPI := humachi.New(r, humaConfig)
 	registerRoutes(a, humaAPI)
+
+	// Extensions
+	huma.Get(humaAPI, "/api/v1/extensions", listExtensionsHandler(extInfos))
+	for _, ext := range extRoutes {
+		r.Mount("/api/v1/extensions/"+ext.ID, ext.Handler)
+	}
 
 	uiHandler := ui.NewHandler()
 	r.NotFound(uiHandler.ServeHTTP)

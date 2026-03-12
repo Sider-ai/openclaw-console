@@ -60,7 +60,7 @@ func TestBearerAuthSkipsHealthzAndOptions(t *testing.T) {
 	t.Run("healthz", func(t *testing.T) {
 		router := NewRouter(NewAPI(nil, nil), RouterConfig{
 			AuthToken: "secret-token",
-		})
+		}, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 		rec := httptest.NewRecorder()

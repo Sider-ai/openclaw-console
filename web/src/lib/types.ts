@@ -168,3 +168,10 @@ export type TelegramPairingEntry = {
 };
 
 export type NavKey = "agents" | "channels" | "tools" | "models";
+
+export type ExtensionInfo = {
+  id: string;
+  displayName: string;
+  icon: string;
+  basePath: string;
+};

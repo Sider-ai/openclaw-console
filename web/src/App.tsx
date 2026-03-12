@@ -6,12 +6,13 @@ import { useAuth } from "./hooks/useAuth";
 import { useChannelsData } from "./hooks/useChannelsData";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
+import { useExtensions } from "./hooks/useExtensions";
 import { useQQBotChannel } from "./hooks/useQQBotChannel";
 import { useTelegramChannel } from "./hooks/useTelegramChannel";
 import { useTelegramPairings } from "./hooks/useTelegramPairings";
 import { useWeComAppChannel } from "./hooks/useWeComAppChannel";
 import { api } from "./lib/api";
-import { channelRouteFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
+import { channelRouteFromPath, extensionFromPath, navFromPath, providerRouteFromPath } from "./lib/navigation";
 import type { BuildInfo } from "./lib/types";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
@@ -24,12 +25,19 @@ const QQBotChannelPage = lazy(() => import("./pages/QQBotChannelPage").then((m) 
 const TelegramChannelPage = lazy(() => import("./pages/TelegramChannelPage").then((m) => ({ default: m.TelegramChannelPage })));
 const WeComAppChannelPage = lazy(() => import("./pages/WeComAppChannelPage").then((m) => ({ default: m.WeComAppChannelPage })));
 
+const EXTENSION_PAGES: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  updater: lazy(() => import("./pages/SystemUpdatesPage").then((m) => ({ default: m.SystemUpdatesPage }))),
+};
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const providerRoute = providerRouteFromPath(location.pathname);
   const channelRoute = channelRouteFromPath(location.pathname);
   const activeNav = navFromPath(location.pathname);
+
+  const { extensions } = useExtensions();
+  const activeExtensionId = extensionFromPath(location.pathname, extensions);
 
   const { token, login } = useAuth();
   const [requiresAuth, setRequiresAuth] = useState(false);
@@ -133,6 +141,7 @@ export default function App() {
   return (
     <>
       <AppShell
+        activeExtensionId={activeExtensionId}
         activeNav={activeNav}
         apiBase={consoleData.apiBase}
         buildInfo={buildInfo}
@@ -140,6 +149,7 @@ export default function App() {
         channelRoute={channelRoute}
         channelsExpanded={channelsExpanded}
         error={shellError}
+        extensions={extensions}
         loading={shellLoading}
         modelsExpanded={consoleData.modelsExpanded}
         onNavigate={navigate}
@@ -280,6 +290,10 @@ export default function App() {
               }
             />
             <Route path="/tools" element={<PlaceholderPage description="Tool resources and policy controls will be managed here." title="Tools" />} />
+            {extensions.map((ext) => {
+              const Page = EXTENSION_PAGES[ext.id];
+              return Page ? <Route key={ext.id} path={ext.basePath} element={<Page />} /> : null;
+            })}
             <Route path="*" element={<Navigate to="/models" replace />} />
           </Routes>
         </Suspense>

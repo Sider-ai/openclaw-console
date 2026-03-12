@@ -1,59 +1,61 @@
 package main
 
 import (
-	"cmp"
-	"context"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/api"
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
+	"github.com/Sider-ai/sider-openclaw-console/server/internal/updater"
+	"github.com/Sider-ai/sider-openclaw-console/server/pkg/console"
 )
 
 func main() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
 		With().Timestamp().Logger()
 
-	paths, err := openclaw.ResolvePaths()
-	if err != nil {
-		log.Fatal().Err(err).Msg("resolve paths")
+	var extensions []console.Extension
+	if os.Getenv("OPENCLAW_UPDATER_ENABLED") == "1" {
+		extensions = append(extensions, updater.New(updater.Config{
+			GitHubToken: os.Getenv("GITHUB_TOKEN"),
+			StateFile:   os.Getenv("OPENCLAW_UPDATER_STATE_FILE"),
+			Components: []updater.ComponentConfig{
+				{
+					ID:          "openclaw-console",
+					DisplayName: "OpenClaw Console",
+					GitHubOwner: "Sider-ai",
+					GitHubRepo:  "sider-openclaw-console",
+					AssetName:   "openclaw-console-linux-amd64",
+					BinaryPath:  "/usr/local/bin/openclaw-console",
+					ServiceName: "openclaw-console",
+				},
+				{
+					ID:          "siderclaw-gateway",
+					DisplayName: "SiderClaw Gateway",
+					GitHubOwner: "Sider-ai",
+					GitHubRepo:  "siderclaw-gateway",
+					AssetName:   "siderclaw-gateway-linux-amd64",
+					BinaryPath:  "/usr/local/bin/siderclaw-gateway",
+					ServiceName: "siderclaw-gateway",
+				},
+				{
+					ID:          "browser-mcp",
+					DisplayName: "Browser MCP",
+					GitHubOwner: "Sider-ai",
+					GitHubRepo:  "sider-extension-mcp",
+					AssetName:   "extension-mcp-linux-amd64",
+					BinaryPath:  "/usr/local/bin/browser-mcp",
+					ServiceName: "browser-mcp",
+				},
+			},
+		}))
 	}
 
-	store := openclaw.NewStore(paths)
-	cli := openclaw.NewCLI()
-	restarter := openclaw.NewSystemRestarter()
-	service := openclaw.NewService(cli, store, restarter)
-	warmupCtx, warmupCancel := context.WithTimeout(context.Background(), 45*time.Second)
-	if err := service.Warmup(warmupCtx); err != nil {
-		log.Warn().Err(err).Msg("openclaw metadata warmup failed")
-	}
-	warmupCancel()
-	service.StartBackground(context.Background())
-	sessions := openclaw.NewSessionManager(cli, store, restarter)
-
-	a := api.NewAPI(service, sessions)
-	router := api.NewRouter(a, api.RouterConfig{
+	if err := console.Bootstrap(console.Config{
+		Addr:      os.Getenv("OPENCLAW_CONSOLE_ADDR"),
 		AuthToken: os.Getenv("OPENCLAW_CONSOLE_AUTH_TOKEN"),
-	})
-
-	addr := cmp.Or(os.Getenv("OPENCLAW_CONSOLE_ADDR"), ":18080")
-	// submitRedirect can block up to ~95s while waiting for onboard completion,
-	// so WriteTimeout must be higher than that request window.
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           router,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      2 * time.Minute,
-		IdleTimeout:       60 * time.Second,
-	}
-
-	log.Info().Str("addr", addr).Msg("openclaw console api listening")
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal().Err(err).Msg("listen")
+	}, extensions...); err != nil {
+		log.Fatal().Err(err).Msg("server error")
 	}
 }
