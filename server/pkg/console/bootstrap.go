@@ -9,8 +9,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/api"
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
+	"github.com/Sider-ai/openclaw-console/server/internal/api"
+	"github.com/Sider-ai/openclaw-console/server/internal/openclaw"
 )
 
 // Bootstrap initialises all core services, starts extensions, and runs the

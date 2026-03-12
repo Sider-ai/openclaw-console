@@ -7,7 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
+	"github.com/Sider-ai/openclaw-console/server/internal/openclaw"
 )
 
 type API struct {

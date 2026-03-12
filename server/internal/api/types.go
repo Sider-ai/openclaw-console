@@ -1,6 +1,6 @@
 package api
 
-import "github.com/Sider-ai/sider-openclaw-console/server/internal/openclaw"
+import "github.com/Sider-ai/openclaw-console/server/internal/openclaw"
 
 // Model settings
 

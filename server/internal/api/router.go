@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
 
-	"github.com/Sider-ai/sider-openclaw-console/server/internal/ui"
+	"github.com/Sider-ai/openclaw-console/server/internal/ui"
 )
 
 type RouterConfig struct {
