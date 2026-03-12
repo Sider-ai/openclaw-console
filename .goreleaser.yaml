@@ -1,0 +1,42 @@
+version: 2
+
+before:
+  hooks:
+    - ./scripts/build-web-assets.sh
+
+builds:
+  - id: openclaw-console
+    dir: server
+    main: ./cmd/server
+    binary: openclaw-console
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: ["tar.gz"]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^style:"
+
+release:
+  github:
+    owner: Sider-ai
+    name: openclaw-console
