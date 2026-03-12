@@ -1,6 +1,6 @@
 # openclaw-console
 
-A self-hosted web console for managing [OpenClaw](https://github.com/nicepkg/openclaw) instances. Configure AI providers, models, chat channels, and extensions through a clean browser UI.
+A self-hosted web console for managing [OpenClaw](https://github.com/openclaw/openclaw) instances. Configure AI providers, models, chat channels, and extensions through a clean browser UI.
 
 **Key features:**
 
