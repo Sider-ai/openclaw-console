@@ -21,6 +21,20 @@ type ConflictError struct{ Message string }
 
 func (e *ConflictError) Error() string { return e.Message }
 
+type OpenClawInfoResource struct {
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	UpdateChannel   string `json:"updateChannel"`
+	LatestVersion   string `json:"latestVersion"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	InstallKind     string `json:"installKind"`
+}
+
+type OpenClawUpdateResult struct {
+	Name   string `json:"name"`
+	Output string `json:"output"`
+}
+
 type GatewayStatusResource struct {
 	Name    string `json:"name"`
 	Runtime string `json:"runtime"`

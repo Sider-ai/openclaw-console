@@ -18,4 +18,7 @@ type CLIRunner interface {
 	GatewayStart(ctx context.Context) error
 	GatewayStop(ctx context.Context) error
 	GatewayRestart(ctx context.Context) error
+	Version(ctx context.Context) (string, error)
+	UpdateStatus(ctx context.Context) (openclawUpdateStatus, error)
+	Update(ctx context.Context) (string, error)
 }

@@ -231,6 +231,42 @@ func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChanne
 	return s.GetWeComAppChannel(ctx)
 }
 
+func (s *Service) GetOpenClawInfo(ctx context.Context) (OpenClawInfoResource, error) {
+	versionOutput, err := s.cli.Version(ctx)
+	if err != nil {
+		return OpenClawInfoResource{}, err
+	}
+	version := parseVersionString(versionOutput)
+
+	status, err := s.cli.UpdateStatus(ctx)
+	if err != nil {
+		return OpenClawInfoResource{
+			Name:    "openclaw/info",
+			Version: version,
+		}, nil
+	}
+
+	return OpenClawInfoResource{
+		Name:            "openclaw/info",
+		Version:         version,
+		UpdateChannel:   status.Channel.Label,
+		LatestVersion:   status.Availability.LatestVersion,
+		UpdateAvailable: status.Availability.Available,
+		InstallKind:     status.Update.InstallKind,
+	}, nil
+}
+
+func (s *Service) UpdateOpenClaw(ctx context.Context) (OpenClawUpdateResult, error) {
+	output, err := s.cli.Update(ctx)
+	if err != nil {
+		return OpenClawUpdateResult{}, err
+	}
+	return OpenClawUpdateResult{
+		Name:   "openclaw:update",
+		Output: output,
+	}, nil
+}
+
 func (s *Service) GetGatewayStatus(ctx context.Context) (GatewayStatusResource, error) {
 	st, err := s.cli.GatewayStatus(ctx)
 	if err != nil {
@@ -627,6 +663,16 @@ func (s *Service) ListModelCatalogEntries(
 		next = EncodePageToken(end)
 	}
 	return out, next, nil
+}
+
+// parseVersionString extracts the version from "OpenClaw X.Y.Z (hash)\n".
+func parseVersionString(raw string) string {
+	// Expected format: "OpenClaw 2026.3.8 (3caab92)"
+	fields := strings.Fields(raw)
+	if len(fields) >= 2 {
+		return fields[1]
+	}
+	return raw
 }
 
 func isManagedProvider(provider string) bool {

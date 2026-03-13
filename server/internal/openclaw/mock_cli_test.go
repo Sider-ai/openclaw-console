@@ -22,6 +22,9 @@ type mockCLI struct {
 	gatewayStartFn    func(ctx context.Context) error
 	gatewayStopFn     func(ctx context.Context) error
 	gatewayRestartFn  func(ctx context.Context) error
+	versionFn         func(ctx context.Context) (string, error)
+	updateStatusFn    func(ctx context.Context) (openclawUpdateStatus, error)
+	updateFn          func(ctx context.Context) (string, error)
 }
 
 type mockRestarter struct {
@@ -119,6 +122,27 @@ func (m *mockCLI) GatewayRestart(ctx context.Context) error {
 		return m.gatewayRestartFn(ctx)
 	}
 	return nil
+}
+
+func (m *mockCLI) Version(ctx context.Context) (string, error) {
+	if m.versionFn != nil {
+		return m.versionFn(ctx)
+	}
+	return "OpenClaw 2026.3.8 (3caab92)\n", nil
+}
+
+func (m *mockCLI) UpdateStatus(ctx context.Context) (openclawUpdateStatus, error) {
+	if m.updateStatusFn != nil {
+		return m.updateStatusFn(ctx)
+	}
+	return openclawUpdateStatus{}, nil
+}
+
+func (m *mockCLI) Update(ctx context.Context) (string, error) {
+	if m.updateFn != nil {
+		return m.updateFn(ctx)
+	}
+	return "Updated successfully", nil
 }
 
 // newStandardMockCLI returns a mock with realistic provider and model data.

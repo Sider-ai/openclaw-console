@@ -51,6 +51,10 @@ func NewRouter(a *API, cfg RouterConfig, extRoutes []ExtensionRoute, extInfos []
 func registerRoutes(a *API, api huma.API) {
 	huma.Get(api, "/api/v1/version", a.GetVersion)
 
+	// OpenClaw info
+	huma.Get(api, "/api/v1/openclaw/info", a.GetOpenClawInfo)
+	huma.Post(api, "/api/v1/openclaw:update", a.UpdateOpenClaw)
+
 	// Gateway
 	huma.Get(api, "/api/v1/gateway/status", a.GetGatewayStatus)
 	huma.Post(api, "/api/v1/gateway:start", a.StartGateway)

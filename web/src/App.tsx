@@ -5,6 +5,7 @@ import { AppShell } from "./components/AppShell";
 import { useAuth } from "./hooks/useAuth";
 import { useChannelsData } from "./hooks/useChannelsData";
 import { useGatewayStatus } from "./hooks/useGatewayStatus";
+import { useOpenClawInfo } from "./hooks/useOpenClawInfo";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
 import { useExtensions } from "./hooks/useExtensions";
@@ -50,6 +51,7 @@ export default function App() {
   const consoleData = useConsoleData(providerRoute, { requestConfirm });
   const channelsData = useChannelsData(activeNav === "channels" || activeNav === "setup");
   const gatewayStatus = useGatewayStatus(activeNav === "setup");
+  const openclawInfo = useOpenClawInfo(activeNav === "setup");
   const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh, { requestConfirm });
   const telegramPairings = useTelegramPairings(
     activeNav === "channels" && channelRoute === "telegram" &&
@@ -178,6 +180,9 @@ export default function App() {
                   modelSetting={consoleData.modelSetting}
                   onGatewayStart={gatewayStatus.start}
                   onGatewayStop={gatewayStatus.stop}
+                  onOpenClawUpdate={openclawInfo.update}
+                  openclawInfo={openclawInfo.info}
+                  openclawUpdateInProgress={openclawInfo.updateInProgress}
                   providerLabel={consoleData.providerLabel}
                 />
               }
