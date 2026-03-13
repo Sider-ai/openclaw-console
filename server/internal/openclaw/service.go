@@ -663,8 +663,7 @@ func (s *Service) ListModelCatalogEntries(
 	return out, next, nil
 }
 
-// parseVersionString extracts the version from "OpenClaw X.Y.Z (hash)\n".
-// Expected format: "OpenClaw 2026.3.8 (3caab92)"
+// parseVersionString extracts the version from output like "OpenClaw 2026.3.8 (3caab92)".
 func parseVersionString(raw string) string {
 	_, version, ok := strings.Cut(raw, " ")
 	if !ok {
