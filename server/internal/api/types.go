@@ -6,12 +6,12 @@ import "github.com/Sider-ai/openclaw-console/server/internal/openclaw"
 
 type GetOpenClawInfoInput struct{}
 type GetOpenClawInfoOutput struct {
-	Body openclaw.OpenClawInfoResource
+	Body openclaw.InfoResource
 }
 
 type UpdateOpenClawInput struct{}
 type UpdateOpenClawOutput struct {
-	Body openclaw.OpenClawUpdateResult
+	Body openclaw.UpdateResult
 }
 
 // Gateway

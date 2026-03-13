@@ -231,37 +231,35 @@ func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChanne
 	return s.GetWeComAppChannel(ctx)
 }
 
-func (s *Service) GetOpenClawInfo(ctx context.Context) (OpenClawInfoResource, error) {
+func (s *Service) GetOpenClawInfo(ctx context.Context) (InfoResource, error) {
 	versionOutput, err := s.cli.Version(ctx)
 	if err != nil {
-		return OpenClawInfoResource{}, err
+		return InfoResource{}, err
 	}
 	version := parseVersionString(versionOutput)
 
-	status, err := s.cli.UpdateStatus(ctx)
-	if err != nil {
-		return OpenClawInfoResource{
-			Name:    "openclaw/info",
-			Version: version,
-		}, nil
+	res := InfoResource{
+		Name:    "openclaw/info",
+		Version: version,
 	}
 
-	return OpenClawInfoResource{
-		Name:            "openclaw/info",
-		Version:         version,
-		UpdateChannel:   status.Channel.Label,
-		LatestVersion:   status.Availability.LatestVersion,
-		UpdateAvailable: status.Availability.Available,
-		InstallKind:     status.Update.InstallKind,
-	}, nil
+	// UpdateStatus may fail (e.g. no network); degrade gracefully.
+	if status, statusErr := s.cli.UpdateStatus(ctx); statusErr == nil {
+		res.UpdateChannel = status.Channel.Label
+		res.LatestVersion = status.Availability.LatestVersion
+		res.UpdateAvailable = status.Availability.Available
+		res.InstallKind = status.Update.InstallKind
+	}
+
+	return res, nil
 }
 
-func (s *Service) UpdateOpenClaw(ctx context.Context) (OpenClawUpdateResult, error) {
+func (s *Service) UpdateOpenClaw(ctx context.Context) (UpdateResult, error) {
 	output, err := s.cli.Update(ctx)
 	if err != nil {
-		return OpenClawUpdateResult{}, err
+		return UpdateResult{}, err
 	}
-	return OpenClawUpdateResult{
+	return UpdateResult{
 		Name:   "openclaw:update",
 		Output: output,
 	}, nil
@@ -666,13 +664,14 @@ func (s *Service) ListModelCatalogEntries(
 }
 
 // parseVersionString extracts the version from "OpenClaw X.Y.Z (hash)\n".
+// Expected format: "OpenClaw 2026.3.8 (3caab92)"
 func parseVersionString(raw string) string {
-	// Expected format: "OpenClaw 2026.3.8 (3caab92)"
-	fields := strings.Fields(raw)
-	if len(fields) >= 2 {
-		return fields[1]
+	_, version, ok := strings.Cut(raw, " ")
+	if !ok {
+		return raw
 	}
-	return raw
+	version, _, _ = strings.Cut(version, " ")
+	return version
 }
 
 func isManagedProvider(provider string) bool {
