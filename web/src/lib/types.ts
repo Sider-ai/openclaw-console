@@ -167,6 +167,15 @@ export type TelegramPairingEntry = {
   requestedAt?: string;
 };
 
+export type GatewayStatus = {
+  name: string;
+  runtime: string;
+  service: string;
+  rpcOk: boolean;
+  url: string;
+  healthy: boolean;
+};
+
 export type NavKey = "setup" | "agents" | "channels" | "tools" | "models";
 
 export type ExtensionInfo = {

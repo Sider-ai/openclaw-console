@@ -105,6 +105,50 @@ func (c *CLI) SetDefaultModel(ctx context.Context, model string) error {
 	return err
 }
 
+type gatewayStatus struct {
+	Service struct {
+		Label   string `json:"label"`
+		Loaded  bool   `json:"loaded"`
+		Runtime struct {
+			Status      string `json:"status"`
+			Detail      string `json:"detail"`
+			MissingUnit bool   `json:"missingUnit"`
+		} `json:"runtime"`
+	} `json:"service"`
+	Gateway struct {
+		BindHost string `json:"bindHost"`
+		Port     int    `json:"port"`
+		ProbeURL string `json:"probeUrl"`
+	} `json:"gateway"`
+	RPC struct {
+		OK    bool   `json:"ok"`
+		Error string `json:"error"`
+		URL   string `json:"url"`
+	} `json:"rpc"`
+}
+
+func (c *CLI) GatewayStatus(ctx context.Context) (gatewayStatus, error) {
+	out, err := c.runJSON(ctx, "openclaw", "gateway", "status")
+	if err != nil {
+		return gatewayStatus{}, err
+	}
+	var st gatewayStatus
+	if err := json.Unmarshal(out, &st); err != nil {
+		return gatewayStatus{}, fmt.Errorf("parse gateway status: %w", err)
+	}
+	return st, nil
+}
+
+func (c *CLI) GatewayStart(ctx context.Context) error {
+	_, err := c.run(ctx, "openclaw", "gateway", "install")
+	return err
+}
+
+func (c *CLI) GatewayStop(ctx context.Context) error {
+	_, err := c.run(ctx, "openclaw", "gateway", "stop")
+	return err
+}
+
 func (c *CLI) GatewayRestart(ctx context.Context) error {
 	_, err := c.run(ctx, "openclaw", "gateway", "restart")
 	return err

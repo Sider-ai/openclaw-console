@@ -35,6 +35,32 @@ func mapServiceError(err error) error {
 	return huma.Error500InternalServerError(err.Error())
 }
 
+// Gateway
+
+func (a *API) GetGatewayStatus(ctx context.Context, input *GetGatewayStatusInput) (*GetGatewayStatusOutput, error) {
+	res, err := a.service.GetGatewayStatus(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &GetGatewayStatusOutput{Body: res}, nil
+}
+
+func (a *API) StartGateway(ctx context.Context, input *StartGatewayInput) (*StartGatewayOutput, error) {
+	res, err := a.service.StartGateway(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &StartGatewayOutput{Body: res}, nil
+}
+
+func (a *API) StopGateway(ctx context.Context, input *StopGatewayInput) (*StopGatewayOutput, error) {
+	res, err := a.service.StopGateway(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &StopGatewayOutput{Body: res}, nil
+}
+
 // Model settings
 
 func (a *API) GetVersion(ctx context.Context, input *GetVersionInput) (*GetVersionOutput, error) {

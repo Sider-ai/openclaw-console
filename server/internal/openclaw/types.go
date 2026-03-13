@@ -21,6 +21,15 @@ type ConflictError struct{ Message string }
 
 func (e *ConflictError) Error() string { return e.Message }
 
+type GatewayStatusResource struct {
+	Name    string `json:"name"`
+	Runtime string `json:"runtime"`
+	Service string `json:"service"`
+	RPCOk   bool   `json:"rpcOk"`
+	URL     string `json:"url"`
+	Healthy bool   `json:"healthy"`
+}
+
 type ModelSettingResource struct {
 	Name         string `json:"name"`
 	DefaultModel string `json:"defaultModel"`

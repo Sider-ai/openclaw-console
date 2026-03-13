@@ -51,6 +51,11 @@ func NewRouter(a *API, cfg RouterConfig, extRoutes []ExtensionRoute, extInfos []
 func registerRoutes(a *API, api huma.API) {
 	huma.Get(api, "/api/v1/version", a.GetVersion)
 
+	// Gateway
+	huma.Get(api, "/api/v1/gateway/status", a.GetGatewayStatus)
+	huma.Post(api, "/api/v1/gateway:start", a.StartGateway)
+	huma.Post(api, "/api/v1/gateway:stop", a.StopGateway)
+
 	// Model settings
 	huma.Get(api, "/api/v1/modelSettings/default", a.GetDefaultModelSetting)
 	huma.Patch(api, "/api/v1/modelSettings/default", a.PatchDefaultModelSetting)
