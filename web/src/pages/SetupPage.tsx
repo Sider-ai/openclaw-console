@@ -1,7 +1,7 @@
-import { CheckCircle2, Circle, ExternalLink, Loader2 } from "lucide-react";
+import { Activity, CheckCircle2, Circle, ExternalLink, Loader2, Play, Square } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import type { BuildInfo, CatalogEntry, ChannelSummary, ModelSetting } from "../lib/types";
+import type { BuildInfo, CatalogEntry, ChannelSummary, GatewayStatus, ModelSetting } from "../lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,11 @@ type SetupPageProps = {
   channels: ChannelSummary[];
   providerLabel: (id: string) => string;
   loading: boolean;
+  gatewayStatus: GatewayStatus | null;
+  gatewayError: string;
+  gatewayActionInProgress: boolean;
+  onGatewayStart: () => void;
+  onGatewayStop: () => void;
 };
 
 function StepIcon({ complete }: { complete: boolean }) {
@@ -23,7 +28,26 @@ function StepIcon({ complete }: { complete: boolean }) {
   );
 }
 
-export function SetupPage({ buildInfo, modelOptions, modelSetting, channels, providerLabel, loading }: SetupPageProps) {
+function gatewayBadge(status: GatewayStatus | null) {
+  if (!status) return <Badge variant="secondary">Unknown</Badge>;
+  if (status.healthy) return <Badge variant="success">Running</Badge>;
+  if (status.runtime === "running") return <Badge className="border-transparent bg-amber-100 text-amber-800 shadow hover:bg-amber-100/80">Degraded</Badge>;
+  return <Badge variant="destructive">Stopped</Badge>;
+}
+
+export function SetupPage({
+  buildInfo,
+  modelOptions,
+  modelSetting,
+  channels,
+  providerLabel,
+  loading,
+  gatewayStatus,
+  gatewayError,
+  gatewayActionInProgress,
+  onGatewayStart,
+  onGatewayStop,
+}: SetupPageProps) {
   const navigate = useNavigate();
 
   const installOk = buildInfo !== null;
@@ -33,6 +57,9 @@ export function SetupPage({ buildInfo, modelOptions, modelSetting, channels, pro
 
   const configuredChannels = channels.filter((ch) => ch.configured);
   const stepsRemaining = [installOk, providerOk, channelOk].filter((v) => !v).length;
+
+  const isStopped = gatewayStatus != null && !gatewayStatus.healthy && gatewayStatus.runtime !== "running";
+  const isRunning = gatewayStatus != null && gatewayStatus.runtime === "running";
 
   return (
     <>
@@ -90,6 +117,65 @@ export function SetupPage({ buildInfo, modelOptions, modelSetting, channels, pro
             </div>
           </CardContent>
         )}
+      </Card>
+
+      {/* Gateway Service Status */}
+      <Card className="shadow-sm ring-1 ring-border/60">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Activity className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <CardTitle className="text-base">Gateway Service</CardTitle>
+              <CardDescription>The OpenClaw gateway daemon that processes requests.</CardDescription>
+            </div>
+            {gatewayBadge(gatewayStatus)}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-1.5 text-sm">
+            {gatewayStatus && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Runtime</span>
+                  <span>{gatewayStatus.runtime || "unknown"}</span>
+                </div>
+                {gatewayStatus.service && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Service</span>
+                    <span>{gatewayStatus.service}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">RPC Probe</span>
+                  <span>{gatewayStatus.rpcOk ? "OK" : "Failed"}</span>
+                </div>
+                {gatewayStatus.url && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">URL</span>
+                    <span className="font-mono text-xs">{gatewayStatus.url}</span>
+                  </div>
+                )}
+              </>
+            )}
+            {gatewayError && (
+              <p className="text-sm text-destructive">{gatewayError}</p>
+            )}
+            <div className="mt-2 flex gap-2">
+              {isStopped && (
+                <Button size="sm" disabled={gatewayActionInProgress} onClick={onGatewayStart}>
+                  {gatewayActionInProgress ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
+                  Start
+                </Button>
+              )}
+              {isRunning && (
+                <Button variant="outline" size="sm" disabled={gatewayActionInProgress} onClick={onGatewayStop}>
+                  {gatewayActionInProgress ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Square className="mr-1.5 h-3.5 w-3.5" />}
+                  Stop
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Step 2: Model Provider */}

@@ -486,3 +486,104 @@ func TestService_ResetAuth_UnsupportedProvider(t *testing.T) {
 		t.Errorf("expected InputError, got %T", err)
 	}
 }
+
+func TestService_GetGatewayStatus(t *testing.T) {
+	cli := newStandardMockCLI()
+	cli.gatewayStatusFn = func(_ context.Context) (gatewayStatus, error) {
+		var st gatewayStatus
+		st.Service.Label = "launchd"
+		st.Service.Runtime.Status = "running"
+		st.RPC.OK = true
+		st.RPC.URL = "ws://127.0.0.1:18789"
+		return st, nil
+	}
+	svc := newTestService(t, cli)
+	ctx := context.Background()
+
+	res, err := svc.GetGatewayStatus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Runtime != "running" {
+		t.Errorf("runtime = %q", res.Runtime)
+	}
+	if !res.Healthy {
+		t.Error("expected healthy")
+	}
+	if res.URL != "ws://127.0.0.1:18789" {
+		t.Errorf("url = %q", res.URL)
+	}
+}
+
+func TestService_StartGateway(t *testing.T) {
+	startCalled := false
+	cli := newStandardMockCLI()
+	cli.gatewayStartFn = func(_ context.Context) error {
+		startCalled = true
+		return nil
+	}
+	cli.gatewayStatusFn = func(_ context.Context) (gatewayStatus, error) {
+		var st gatewayStatus
+		st.Service.Label = "launchd"
+		st.Service.Runtime.Status = "running"
+		st.RPC.OK = true
+		st.RPC.URL = "ws://127.0.0.1:18789"
+		return st, nil
+	}
+	svc := newTestService(t, cli)
+	ctx := context.Background()
+
+	res, err := svc.StartGateway(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !startCalled {
+		t.Error("GatewayStart not called")
+	}
+	if res.Runtime != "running" {
+		t.Errorf("runtime = %q", res.Runtime)
+	}
+}
+
+func TestService_StopGateway(t *testing.T) {
+	stopCalled := false
+	cli := newStandardMockCLI()
+	cli.gatewayStopFn = func(_ context.Context) error {
+		stopCalled = true
+		return nil
+	}
+	cli.gatewayStatusFn = func(_ context.Context) (gatewayStatus, error) {
+		var st gatewayStatus
+		st.Service.Label = "launchd"
+		st.Service.Runtime.Status = "stopped"
+		st.RPC.OK = false
+		return st, nil
+	}
+	svc := newTestService(t, cli)
+	ctx := context.Background()
+
+	res, err := svc.StopGateway(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stopCalled {
+		t.Error("GatewayStop not called")
+	}
+	if res.Healthy {
+		t.Error("expected not healthy")
+	}
+}
+
+func TestService_StartGateway_Error(t *testing.T) {
+	cli := newStandardMockCLI()
+	cli.gatewayStartFn = func(_ context.Context) error {
+		return errors.New("start failed")
+	}
+	svc := newTestService(t, cli)
+	ctx := context.Background()
+
+	_, err := svc.StartGateway(ctx)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

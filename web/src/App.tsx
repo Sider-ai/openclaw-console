@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { AppShell } from "./components/AppShell";
 import { useAuth } from "./hooks/useAuth";
 import { useChannelsData } from "./hooks/useChannelsData";
+import { useGatewayStatus } from "./hooks/useGatewayStatus";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useConsoleData } from "./hooks/useConsoleData";
 import { useExtensions } from "./hooks/useExtensions";
@@ -48,6 +49,7 @@ export default function App() {
 
   const consoleData = useConsoleData(providerRoute, { requestConfirm });
   const channelsData = useChannelsData(activeNav === "channels" || activeNav === "setup");
+  const gatewayStatus = useGatewayStatus(activeNav === "setup");
   const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh, { requestConfirm });
   const telegramPairings = useTelegramPairings(
     activeNav === "channels" && channelRoute === "telegram" &&
@@ -168,9 +170,14 @@ export default function App() {
                 <SetupPage
                   buildInfo={buildInfo}
                   channels={channelsData.channels}
+                  gatewayActionInProgress={gatewayStatus.actionInProgress}
+                  gatewayError={gatewayStatus.error}
+                  gatewayStatus={gatewayStatus.status}
                   loading={consoleData.loading}
                   modelOptions={consoleData.modelOptions}
                   modelSetting={consoleData.modelSetting}
+                  onGatewayStart={gatewayStatus.start}
+                  onGatewayStop={gatewayStatus.stop}
                   providerLabel={consoleData.providerLabel}
                 />
               }

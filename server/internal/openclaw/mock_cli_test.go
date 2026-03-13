@@ -18,6 +18,9 @@ type mockCLI struct {
 	pairingListFn     func(ctx context.Context, channel string) (pairingList, error)
 	pairingApproveFn  func(ctx context.Context, channel, code string) error
 	pairingRejectFn   func(ctx context.Context, channel, code string) error
+	gatewayStatusFn   func(ctx context.Context) (gatewayStatus, error)
+	gatewayStartFn    func(ctx context.Context) error
+	gatewayStopFn     func(ctx context.Context) error
 	gatewayRestartFn  func(ctx context.Context) error
 }
 
@@ -86,6 +89,27 @@ func (m *mockCLI) PairingApprove(ctx context.Context, channel, code string) erro
 func (m *mockCLI) PairingReject(ctx context.Context, channel, code string) error {
 	if m.pairingRejectFn != nil {
 		return m.pairingRejectFn(ctx, channel, code)
+	}
+	return nil
+}
+
+func (m *mockCLI) GatewayStatus(ctx context.Context) (gatewayStatus, error) {
+	if m.gatewayStatusFn != nil {
+		return m.gatewayStatusFn(ctx)
+	}
+	return gatewayStatus{}, nil
+}
+
+func (m *mockCLI) GatewayStart(ctx context.Context) error {
+	if m.gatewayStartFn != nil {
+		return m.gatewayStartFn(ctx)
+	}
+	return nil
+}
+
+func (m *mockCLI) GatewayStop(ctx context.Context) error {
+	if m.gatewayStopFn != nil {
+		return m.gatewayStopFn(ctx)
 	}
 	return nil
 }

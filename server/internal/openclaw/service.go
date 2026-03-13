@@ -230,6 +230,44 @@ func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChanne
 	return s.GetWeComAppChannel(ctx)
 }
 
+func (s *Service) GetGatewayStatus(ctx context.Context) (GatewayStatusResource, error) {
+	st, err := s.cli.GatewayStatus(ctx)
+	if err != nil {
+		return GatewayStatusResource{}, err
+	}
+	return buildGatewayStatusResource(st), nil
+}
+
+func (s *Service) StartGateway(ctx context.Context) (GatewayStatusResource, error) {
+	if err := s.cli.GatewayStart(ctx); err != nil {
+		return GatewayStatusResource{}, err
+	}
+	return s.GetGatewayStatus(ctx)
+}
+
+func (s *Service) StopGateway(ctx context.Context) (GatewayStatusResource, error) {
+	if err := s.cli.GatewayStop(ctx); err != nil {
+		return GatewayStatusResource{}, err
+	}
+	return s.GetGatewayStatus(ctx)
+}
+
+func buildGatewayStatusResource(st gatewayStatus) GatewayStatusResource {
+	runtime := st.Service.Runtime.Status
+	url := st.RPC.URL
+	if url == "" {
+		url = st.Gateway.ProbeURL
+	}
+	return GatewayStatusResource{
+		Name:    "gateway/status",
+		Runtime: runtime,
+		Service: st.Service.Label,
+		RPCOk:   st.RPC.OK,
+		URL:     url,
+		Healthy: runtime == "running" && st.RPC.OK,
+	}
+}
+
 func (s *Service) Warmup(ctx context.Context) error {
 	return s.cache.Warmup(ctx)
 }

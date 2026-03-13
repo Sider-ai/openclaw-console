@@ -12,5 +12,8 @@ type CLIRunner interface {
 	PairingList(ctx context.Context, channel string) (pairingList, error)
 	PairingApprove(ctx context.Context, channel, code string) error
 	PairingReject(ctx context.Context, channel, code string) error
+	GatewayStatus(ctx context.Context) (gatewayStatus, error)
+	GatewayStart(ctx context.Context) error
+	GatewayStop(ctx context.Context) error
 	GatewayRestart(ctx context.Context) error
 }
