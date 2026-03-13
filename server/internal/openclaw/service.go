@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	qqBotPluginSpec    = "@sliverp/qqbot@1.5.2"
-	weComAppPluginSpec = "@openclaw-china/wecom-app"
-	maxPageSize        = 200
-	httpClientTimeout  = 10 * time.Second
+	qqBotPluginSpec       = "@sliverp/qqbot@1.5.2"
+	weComAppPluginSpec    = "@openclaw-china/wecom-app"
+	maxPageSize           = 200
+	httpClientTimeout     = 10 * time.Second
+	gatewayRuntimeRunning = "running"
 )
 
 type Service struct {
@@ -264,7 +265,7 @@ func buildGatewayStatusResource(st gatewayStatus) GatewayStatusResource {
 		Service: st.Service.Label,
 		RPCOk:   st.RPC.OK,
 		URL:     url,
-		Healthy: runtime == "running" && st.RPC.OK,
+		Healthy: runtime == gatewayRuntimeRunning && st.RPC.OK,
 	}
 }
 

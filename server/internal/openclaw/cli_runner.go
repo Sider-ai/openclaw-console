@@ -3,6 +3,8 @@ package openclaw
 import "context"
 
 // CLIRunner abstracts the openclaw CLI binary for testability.
+//
+//nolint:dupl // mock struct in tests mirrors this interface by design
 type CLIRunner interface {
 	ModelsStatus(ctx context.Context) (modelsStatus, error)
 	ModelsList(ctx context.Context, provider string) (modelsList, error)
