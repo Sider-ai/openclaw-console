@@ -3,7 +3,7 @@ import type { NavigateFunction } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle, Bot, ChevronRight, Cpu, Database, Download, Globe, Loader2,
-  MessageSquare, RefreshCw, Server, Settings, Shield, Wrench
+  MessageSquare, RefreshCw, Rocket, Server, Settings, Shield, Wrench
 } from "lucide-react";
 
 import { ROOT_NAV_ITEMS } from "../lib/navigation";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const ROOT_NAV_ICONS: Record<string, LucideIcon> = {
+  setup: Rocket,
   agents: Bot,
   tools: Wrench
 };
