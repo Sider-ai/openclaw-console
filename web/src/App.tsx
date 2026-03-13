@@ -16,6 +16,7 @@ import { channelRouteFromPath, extensionFromPath, navFromPath, providerRouteFrom
 import type { BuildInfo } from "./lib/types";
 
 const ChannelsPage = lazy(() => import("./pages/ChannelsPage").then((m) => ({ default: m.ChannelsPage })));
+const SetupPage = lazy(() => import("./pages/SetupPage").then((m) => ({ default: m.SetupPage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const ModelsPage = lazy(() => import("./pages/ModelsPage").then((m) => ({ default: m.ModelsPage })));
 const OpenAIProviderPage = lazy(() => import("./pages/OpenAIProviderPage").then((m) => ({ default: m.OpenAIProviderPage })));
@@ -46,7 +47,7 @@ export default function App() {
   const { requestConfirm, confirmDialogNode } = useConfirmDialog();
 
   const consoleData = useConsoleData(providerRoute, { requestConfirm });
-  const channelsData = useChannelsData(activeNav === "channels");
+  const channelsData = useChannelsData(activeNav === "channels" || activeNav === "setup");
   const telegramChannel = useTelegramChannel(activeNav === "channels" && channelRoute === "telegram", channelsData.refresh, { requestConfirm });
   const telegramPairings = useTelegramPairings(
     activeNav === "channels" && channelRoute === "telegram" &&
@@ -161,6 +162,19 @@ export default function App() {
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Navigate to="/models" replace />} />
+            <Route
+              path="/setup"
+              element={
+                <SetupPage
+                  buildInfo={buildInfo}
+                  channels={channelsData.channels}
+                  loading={consoleData.loading}
+                  modelOptions={consoleData.modelOptions}
+                  modelSetting={consoleData.modelSetting}
+                  providerLabel={consoleData.providerLabel}
+                />
+              }
+            />
             <Route
               path="/models"
               element={

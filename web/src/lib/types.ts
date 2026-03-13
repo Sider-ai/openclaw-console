@@ -167,7 +167,7 @@ export type TelegramPairingEntry = {
   requestedAt?: string;
 };
 
-export type NavKey = "agents" | "channels" | "tools" | "models";
+export type NavKey = "setup" | "agents" | "channels" | "tools" | "models";
 
 export type ExtensionInfo = {
   id: string;

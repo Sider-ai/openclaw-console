@@ -3,6 +3,7 @@ import type { ChannelNav, ChannelSummary, ModelProviderNav, NavKey, ProviderSumm
 export const DOCS_PROVIDER_ROOT = "https://docs.openclaw.ai/providers";
 
 export const ROOT_NAV_ITEMS: { key: Exclude<NavKey, "models" | "channels">; label: string; path: string }[] = [
+  { key: "setup", label: "Setup", path: "/setup" },
   { key: "agents", label: "Agents", path: "/agents" },
   { key: "tools", label: "Tools", path: "/tools" }
 ];
@@ -79,6 +80,9 @@ export function channelRouteFromPath(pathname: string): string | null {
 }
 
 export function navFromPath(pathname: string): NavKey {
+  if (pathname.startsWith("/setup")) {
+    return "setup";
+  }
   if (pathname.startsWith("/agents")) {
     return "agents";
   }
