@@ -167,6 +167,15 @@ export type TelegramPairingEntry = {
   requestedAt?: string;
 };
 
+export type OpenClawInfo = {
+  name: string;
+  version: string;
+  updateChannel: string;
+  latestVersion: string;
+  updateAvailable: boolean;
+  installKind: string;
+};
+
 export type GatewayStatus = {
   name: string;
   runtime: string;

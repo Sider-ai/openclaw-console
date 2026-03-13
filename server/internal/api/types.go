@@ -2,6 +2,18 @@ package api
 
 import "github.com/Sider-ai/openclaw-console/server/internal/openclaw"
 
+// OpenClaw info
+
+type GetOpenClawInfoInput struct{}
+type GetOpenClawInfoOutput struct {
+	Body openclaw.InfoResource
+}
+
+type UpdateOpenClawInput struct{}
+type UpdateOpenClawOutput struct {
+	Body openclaw.UpdateResult
+}
+
 // Gateway
 
 type GetGatewayStatusInput struct{}

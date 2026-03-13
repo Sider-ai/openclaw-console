@@ -35,6 +35,24 @@ func mapServiceError(err error) error {
 	return huma.Error500InternalServerError(err.Error())
 }
 
+// OpenClaw info
+
+func (a *API) GetOpenClawInfo(ctx context.Context, input *GetOpenClawInfoInput) (*GetOpenClawInfoOutput, error) {
+	res, err := a.service.GetOpenClawInfo(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &GetOpenClawInfoOutput{Body: res}, nil
+}
+
+func (a *API) UpdateOpenClaw(ctx context.Context, input *UpdateOpenClawInput) (*UpdateOpenClawOutput, error) {
+	res, err := a.service.UpdateOpenClaw(ctx)
+	if err != nil {
+		return nil, huma.Error500InternalServerError(err.Error())
+	}
+	return &UpdateOpenClawOutput{Body: res}, nil
+}
+
 // Gateway
 
 func (a *API) GetGatewayStatus(ctx context.Context, input *GetGatewayStatusInput) (*GetGatewayStatusOutput, error) {

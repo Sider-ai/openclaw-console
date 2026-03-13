@@ -231,6 +231,40 @@ func (s *Service) DisconnectWeComAppChannel(ctx context.Context) (WeComAppChanne
 	return s.GetWeComAppChannel(ctx)
 }
 
+func (s *Service) GetOpenClawInfo(ctx context.Context) (InfoResource, error) {
+	versionOutput, err := s.cli.Version(ctx)
+	if err != nil {
+		return InfoResource{}, err
+	}
+	version := parseVersionString(versionOutput)
+
+	res := InfoResource{
+		Name:    "openclaw/info",
+		Version: version,
+	}
+
+	// UpdateStatus may fail (e.g. no network); degrade gracefully.
+	if status, statusErr := s.cli.UpdateStatus(ctx); statusErr == nil {
+		res.UpdateChannel = status.Channel.Label
+		res.LatestVersion = status.Availability.LatestVersion
+		res.UpdateAvailable = status.Availability.Available
+		res.InstallKind = status.Update.InstallKind
+	}
+
+	return res, nil
+}
+
+func (s *Service) UpdateOpenClaw(ctx context.Context) (UpdateResult, error) {
+	output, err := s.cli.Update(ctx)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	return UpdateResult{
+		Name:   "openclaw:update",
+		Output: output,
+	}, nil
+}
+
 func (s *Service) GetGatewayStatus(ctx context.Context) (GatewayStatusResource, error) {
 	st, err := s.cli.GatewayStatus(ctx)
 	if err != nil {
@@ -627,6 +661,16 @@ func (s *Service) ListModelCatalogEntries(
 		next = EncodePageToken(end)
 	}
 	return out, next, nil
+}
+
+// parseVersionString extracts the version from output like "OpenClaw 2026.3.8 (3caab92)".
+func parseVersionString(raw string) string {
+	_, version, ok := strings.Cut(raw, " ")
+	if !ok {
+		return raw
+	}
+	version, _, _ = strings.Cut(version, " ")
+	return version
 }
 
 func isManagedProvider(provider string) bool {

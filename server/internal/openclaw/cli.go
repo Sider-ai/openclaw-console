@@ -223,6 +223,53 @@ func (c *CLI) ChannelCapabilities(ctx context.Context, channel string) (channels
 	return res, nil
 }
 
+type openclawUpdateStatus struct {
+	Update struct {
+		InstallKind    string `json:"installKind"`
+		PackageManager string `json:"packageManager"`
+		Registry       struct {
+			LatestVersion string `json:"latestVersion"`
+		} `json:"registry"`
+	} `json:"update"`
+	Channel struct {
+		Value string `json:"value"`
+		Label string `json:"label"`
+	} `json:"channel"`
+	Availability struct {
+		Available         bool   `json:"available"`
+		HasRegistryUpdate bool   `json:"hasRegistryUpdate"`
+		LatestVersion     string `json:"latestVersion"`
+	} `json:"availability"`
+}
+
+func (c *CLI) Version(ctx context.Context) (string, error) {
+	out, err := c.run(ctx, "openclaw", "--version")
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func (c *CLI) UpdateStatus(ctx context.Context) (openclawUpdateStatus, error) {
+	out, err := c.runJSON(ctx, "openclaw", "update", "status")
+	if err != nil {
+		return openclawUpdateStatus{}, err
+	}
+	var st openclawUpdateStatus
+	if err := json.Unmarshal(out, &st); err != nil {
+		return openclawUpdateStatus{}, fmt.Errorf("parse update status: %w", err)
+	}
+	return st, nil
+}
+
+func (c *CLI) Update(ctx context.Context) (string, error) {
+	out, err := c.run(ctx, "openclaw", "update", "--yes")
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
 func (c *CLI) runJSON(ctx context.Context, bin string, args ...string) ([]byte, error) {
 	args = append(args, "--json")
 	cmd := exec.CommandContext(ctx, bin, args...)

@@ -1,7 +1,7 @@
-import { Activity, CheckCircle2, Circle, ExternalLink, Loader2, Play, Square } from "lucide-react";
+import { Activity, ArrowUpCircle, CheckCircle2, Circle, ExternalLink, Loader2, Play, Square } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import type { BuildInfo, CatalogEntry, ChannelSummary, GatewayStatus, ModelSetting } from "../lib/types";
+import type { BuildInfo, CatalogEntry, ChannelSummary, GatewayStatus, ModelSetting, OpenClawInfo } from "../lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,9 @@ type SetupPageProps = {
   gatewayActionInProgress: boolean;
   onGatewayStart: () => void;
   onGatewayStop: () => void;
+  openclawInfo: OpenClawInfo | null;
+  openclawUpdateInProgress: boolean;
+  onOpenClawUpdate: () => void;
 };
 
 function StepIcon({ complete }: { complete: boolean }) {
@@ -47,6 +50,9 @@ export function SetupPage({
   gatewayActionInProgress,
   onGatewayStart,
   onGatewayStop,
+  openclawInfo,
+  openclawUpdateInProgress,
+  onOpenClawUpdate,
 }: SetupPageProps) {
   const navigate = useNavigate();
 
@@ -104,14 +110,30 @@ export function SetupPage({
         {installOk && (
           <CardContent>
             <div className="grid gap-1.5 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Build revision</span>
-                <span className="font-mono text-xs">{buildInfo?.revision ? buildInfo.revision.slice(0, 7) : "unknown"}</span>
-              </div>
-              {buildInfo?.time && (
+              {openclawInfo?.version && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Build time</span>
-                  <span className="text-xs">{buildInfo.time}</span>
+                  <span className="text-muted-foreground">CLI version</span>
+                  <span className="font-mono text-xs">{openclawInfo.version}</span>
+                </div>
+              )}
+              {openclawInfo?.updateChannel && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Update channel</span>
+                  <span className="text-xs">{openclawInfo.updateChannel}</span>
+                </div>
+              )}
+              {openclawInfo?.updateAvailable && openclawInfo.latestVersion && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Latest version</span>
+                  <span className="font-mono text-xs text-emerald-600">{openclawInfo.latestVersion}</span>
+                </div>
+              )}
+              {openclawInfo?.updateAvailable && (
+                <div className="mt-2">
+                  <Button size="sm" disabled={openclawUpdateInProgress} onClick={onOpenClawUpdate}>
+                    {openclawUpdateInProgress ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ArrowUpCircle className="mr-1.5 h-3.5 w-3.5" />}
+                    Update to {openclawInfo.latestVersion}
+                  </Button>
                 </div>
               )}
             </div>
